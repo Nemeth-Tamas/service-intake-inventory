@@ -96,6 +96,7 @@ export default function SettingsPage({ settings }: { settings: any }) {
                         src={settings.logoPath} 
                         alt="Logo" 
                         fill 
+                        unoptimized
                         sizes="128px"
                         className="object-contain p-2" 
                       />

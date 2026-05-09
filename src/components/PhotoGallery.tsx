@@ -32,8 +32,6 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
     setIsSaving(true);
     try {
       await updatePhotoDescription(selectedPhoto.id, description, workOrderId);
-      // Update local state to reflect change without full reload if possible, 
-      // but revalidatePath will handle the server side.
       setSelectedPhoto({ ...selectedPhoto, description });
     } catch (error) {
       console.error('Failed to update description:', error);
@@ -52,6 +50,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
               src={photo.filePath} 
               alt="Device photo" 
               fill 
+              unoptimized
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 200px"
               className="object-cover"
               onClick={() => openLightbox(photo)}
@@ -99,6 +98,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
                 src={selectedPhoto.filePath} 
                 alt="Full size" 
                 fill 
+                unoptimized
                 sizes="(max-width: 1200px) 100vw, 1200px"
                 className="object-contain"
                 priority
