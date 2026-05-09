@@ -14,6 +14,7 @@
 *   **Docker Start:** `docker-compose up -d`
 
 ## Development Conventions
+*   **Git Commits:** Always use the `--no-gpg-sign` flag when committing to bypass GPG agent connection issues in this environment.
 *   **Language:** UI and PDF exports must be in **Hungarian**.
 *   **Architecture:** Next.js App Router with Prisma ORM and SQLite.
 *   **Mobile First:** Ensure the intake and detail pages are optimized for mobile scanning and photo uploads.
