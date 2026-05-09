@@ -15,6 +15,16 @@ async function triggerUpdate(workOrderId?: string) {
   await publishUpdate('dashboard');
 }
 
+// System note helper
+async function logActivity(workOrderId: string, text: string) {
+  await prisma.note.create({
+    data: {
+      workOrderId,
+      text: `[RENDSZER] ${text}`,
+    },
+  });
+}
+
 export async function createWorkOrder(formData: FormData) {
   const customerName = formData.get('customerName') as string;
   const customerContact = formData.get('customerContact') as string;
@@ -43,6 +53,7 @@ export async function createWorkOrder(formData: FormData) {
     },
   });
 
+  await logActivity(workOrder.id, 'Munkalap létrehozva.');
   await triggerUpdate();
   const redirect = (await import('next/navigation')).redirect;
   redirect(`/t/${workOrder.id}`);
@@ -165,7 +176,7 @@ export async function getPreviousRepairs(serialNumber: string, currentId: string
       serialNumber,
       NOT: { id: currentId }
     },
-    include: { photos: true, notes: true },
+    include: { photos: true, notes: true, lineItems: true },
     orderBy: { createdAt: 'desc' }
   });
 }
@@ -247,7 +258,32 @@ export async function addNote(formData: FormData) {
   revalidatePath(`/t/${workOrderId}`);
 }
 
+export async function addLineItem(formData: FormData) {
+  const workOrderId = formData.get('workOrderId') as string;
+  const description = formData.get('description') as string;
+  const amount = parseInt(formData.get('amount') as string) || 0;
+
+  await prisma.lineItem.create({
+    data: { workOrderId, description, amount }
+  });
+
+  await logActivity(workOrderId, `Tétel hozzáadva: ${description} (${amount.toLocaleString('hu-HU')} Ft)`);
+  await triggerUpdate(workOrderId);
+  revalidatePath(`/t/${workOrderId}`);
+}
+
+export async function deleteLineItem(id: string, workOrderId: string) {
+  const item = await prisma.lineItem.findUnique({ where: { id } });
+  if (item) {
+    await prisma.lineItem.delete({ where: { id } });
+    await logActivity(workOrderId, `Tétel törölve: ${item.description}`);
+  }
+  await triggerUpdate(workOrderId);
+  revalidatePath(`/t/${workOrderId}`);
+}
+
 export async function updateStatus(workOrderId: string, status: string) {
+  const oldOrder = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
   await prisma.workOrder.update({
     where: { id: workOrderId },
     data: { 
@@ -258,6 +294,7 @@ export async function updateStatus(workOrderId: string, status: string) {
     },
   });
 
+  await logActivity(workOrderId, `Státusz módosítva: ${oldOrder?.status} -> ${status}`);
   await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
 }
@@ -279,6 +316,7 @@ export async function deletePhoto(photoId: string, workOrderId: string) {
       await unlink(join(process.cwd(), 'public', photo.filePath));
     } catch (e) {}
     await prisma.photo.delete({ where: { id: photoId } });
+    await logActivity(workOrderId, 'Fotó törölve.');
   }
   await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
@@ -308,17 +346,20 @@ export async function updateWorkOrderDetails(formData: FormData) {
     },
   });
 
+  await logActivity(id, 'Munkalap adatai módosítva.');
   await triggerUpdate(id);
   revalidatePath(`/t/${id}`);
   revalidatePath('/');
 }
 
 export async function updatePriority(workOrderId: string, priority: string) {
+  const oldOrder = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
   await prisma.workOrder.update({
     where: { id: workOrderId },
     data: { priority },
   });
 
+  await logActivity(workOrderId, `Prioritás módosítva: ${oldOrder?.priority} -> ${priority}`);
   await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
   revalidatePath('/');
@@ -347,6 +388,7 @@ export async function deleteWorkOrder(workOrderId: string) {
   await prisma.$transaction([
     prisma.statusLog.deleteMany({ where: { workOrderId } }),
     prisma.note.deleteMany({ where: { workOrderId } }),
+    prisma.lineItem.deleteMany({ where: { workOrderId } }),
     prisma.photo.deleteMany({ where: { workOrderId } }),
     prisma.workOrder.delete({ where: { id: workOrderId } }),
   ]);

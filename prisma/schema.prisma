@@ -25,7 +25,17 @@ model WorkOrder {
   notes           Note[]
   photos          Photo[]
   statusHistory   StatusLog[]
+  lineItems       LineItem[]
   archivedPdfPath String?
+}
+
+model LineItem {
+  id          String    @id @default(cuid())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId String
+  description String
+  amount      Int       @default(0)
+  createdAt   DateTime  @default(now())
 }
 
 model Settings {

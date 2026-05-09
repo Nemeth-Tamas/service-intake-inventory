@@ -11,9 +11,11 @@ import StickerPrinter from '@/components/StickerPrinter';
 import DeviceHistory from '@/components/DeviceHistory';
 import EditWorkOrder from '@/components/EditWorkOrder';
 import DeleteWorkOrder from '@/components/DeleteWorkOrder';
+import FinancialTracker from '@/components/FinancialTracker';
+import MobileQuickActions from '@/components/MobileQuickActions';
 import RealTimeListener from '@/components/RealTimeListener';
 import { addNote, getSettings } from '@/lib/actions';
-import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
+import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, AlertTriangle, FileText, History as HistoryIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -28,7 +30,8 @@ export default async function TrackingPage({ params }: { params: { id: string } 
     include: { 
       notes: { orderBy: { createdAt: 'desc' } }, 
       photos: { orderBy: { createdAt: 'desc' } },
-      statusHistory: { orderBy: { createdAt: 'desc' } }
+      statusHistory: { orderBy: { createdAt: 'desc' } },
+      lineItems: { orderBy: { createdAt: 'desc' } }
     },
   });
 
@@ -42,8 +45,9 @@ export default async function TrackingPage({ params }: { params: { id: string } 
   const isPurged = workOrder.status === 'Kiadva' && workOrder.photos.length === 0 && workOrder.archivedPdfPath;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 pb-20">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 pb-32">
       <RealTimeListener event={`order-${workOrder.id}`} />
+      <MobileQuickActions workOrderId={workOrder.id} />
       
       <div className="flex justify-between items-center">
         <Link 
@@ -138,6 +142,8 @@ export default async function TrackingPage({ params }: { params: { id: string } 
             <p className="whitespace-pre-wrap text-amber-950 font-medium leading-relaxed relative z-10">{workOrder.complaint || 'Nincs hiba leírás'}</p>
           </section>
 
+          <FinancialTracker workOrderId={workOrder.id} lineItems={workOrder.lineItems} />
+
           <Suspense fallback={<div className="h-40 bg-gray-100 animate-pulse rounded-2xl" />}>
             <DeviceHistory serialNumber={workOrder.serialNumber || '-'} currentId={workOrder.id} />
           </Suspense>
@@ -183,7 +189,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
 
           <section className="bg-white border p-6 rounded-2xl shadow-sm space-y-6">
             <h2 className="flex items-center gap-2 font-bold text-xl text-gray-800 border-b pb-4">
-              <MessageSquare size={24} className="text-blue-500" /> Jegyzetek
+              <MessageSquare size={24} className="text-blue-500" /> Jegyzetek & Napló
             </h2>
             
             <form action={addNote} className="flex gap-2">
@@ -199,13 +205,13 @@ export default async function TrackingPage({ params }: { params: { id: string } 
               </button>
             </form>
 
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
               {workOrder.notes.map((note) => (
-                <div key={note.id} className="bg-gray-50 border border-gray-100 p-4 rounded-xl shadow-sm">
+                <div key={note.id} className={`${note.text.startsWith('[RENDSZER]') ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-100'} border p-4 rounded-xl shadow-sm`}>
                   <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1 mb-2 uppercase tracking-widest border-b border-gray-100 pb-1">
                     <Clock size={12} /> {note.createdAt.toLocaleString('hu-HU')}
                   </p>
-                  <p className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">{note.text}</p>
+                  <p className={`whitespace-pre-wrap ${note.text.startsWith('[RENDSZER]') ? 'text-blue-800 italic text-xs' : 'text-gray-700 text-sm'} leading-relaxed`}>{note.text}</p>
                 </div>
               ))}
               {workOrder.notes.length === 0 && (
