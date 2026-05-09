@@ -1,12 +1,14 @@
 services:
   app:
     build: .
+    container_name: service-app
     ports:
       - "3000:3000"
     environment:
       - DATABASE_URL=file:/app/prisma/data/dev.db
-      - BASE_URL=http://localhost:3000
+      - NODE_ENV=production
     volumes:
       - ./prisma/data:/app/prisma/data
       - ./public/uploads:/app/public/uploads
+      - ./public/archives:/app/public/archives
     restart: always

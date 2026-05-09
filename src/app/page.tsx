@@ -5,6 +5,8 @@ import DashboardFilters from '@/components/DashboardFilters';
 import DashboardStats from '@/components/DashboardStats';
 import { Suspense } from 'react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home({
   searchParams,
 }: {
