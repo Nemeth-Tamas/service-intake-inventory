@@ -5,10 +5,10 @@ import { existsSync } from 'fs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathParts = await params;
-  const filePath = pathParts.path.join('/');
+  const { path } = await params;
+  const filePath = path.join('/');
   
   // Security: only allow access to specific folders
   if (!filePath.startsWith('uploads/') && !filePath.startsWith('archives/')) {
