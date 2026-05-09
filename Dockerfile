@@ -44,6 +44,11 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV DATABASE_URL="file:/app/prisma/data/dev.db"
+ENV DATABASE_URL="file:///app/prisma/data/dev.db"
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Final permission sweep: SQLite is extremely sensitive to directory permissions on Linux
+USER root
+RUN chmod -R 777 /app/prisma/data /app/public/uploads /app/public/archives
+USER nextjs
+
+CMD ["sh", "-c", "DATABASE_URL=\"file:///app/prisma/data/dev.db\" npx prisma migrate deploy && node server.js"]

@@ -5,10 +5,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=file:/app/prisma/data/dev.db
+      - DATABASE_URL=file:///app/prisma/data/dev.db
       - NODE_ENV=production
     volumes:
-      - ./prisma/data:/app/prisma/data
-      - ./public/uploads:/app/public/uploads
-      - ./public/archives:/app/public/archives
+      - ./prisma/data:/app/prisma/data:z
+      - ./public/uploads:/app/public/uploads:z
+      - ./public/archives:/app/public/archives:z
     restart: always
