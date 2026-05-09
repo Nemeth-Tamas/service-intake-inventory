@@ -4,6 +4,7 @@ import { join } from 'path';
 import { prisma } from '@/lib/prisma';
 import { existsSync } from 'fs';
 import convert from 'heic-convert';
+import { publishUpdate } from '@/lib/realtime';
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
         filePath: `/uploads/${finalFileName}`,
       },
     });
+
+    // Trigger real-time update
+    await publishUpdate(`order-${workOrderId}`);
 
     return NextResponse.json({ success: true, photo });
   } catch (error) {
