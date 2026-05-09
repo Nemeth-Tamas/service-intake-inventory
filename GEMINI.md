@@ -8,7 +8,7 @@
 
 ## Building and Running
 *   **Install Dependencies:** `npm install`
-*   **Database Setup:** `npx prisma migrate dev`
+*   **Database Setup:** `npx prisma migrate dev` (Note: This project uses Prisma 7. Connection URLs are managed in `prisma.config.ts` and `.env`. A driver adapter (`better-sqlite3`) is used in `src/lib/prisma.ts`)
 *   **Run Development:** `npm run dev`
 *   **Build Production:** `npm run build`
 *   **Docker Start:** `docker-compose up -d`

@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model WorkOrder {
@@ -19,10 +18,28 @@ model WorkOrder {
   condition       String?
   complaint       String?
   status          String   @default("Átvétel alatt") // Statuses in Hungarian
+  priority        String   @default("Normál")       // Sürgős, Magas, Normál, Alacsony
+  estimatedDone   DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   notes           Note[]
   photos          Photo[]
+  statusHistory   StatusLog[]
+  archivedPdfPath String?
+}
+
+model Settings {
+  id       Int    @id @default(1)
+  baseUrl  String @default("http://localhost:3000")
+  logoPath String?
+}
+
+model StatusLog {
+  id          String    @id @default(cuid())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId String
+  status      String
+  createdAt   DateTime  @default(now())
 }
 
 model Note {
@@ -38,5 +55,6 @@ model Photo {
   workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
   workOrderId String
   filePath    String
+  description String?
   createdAt   DateTime  @default(now())
 }
