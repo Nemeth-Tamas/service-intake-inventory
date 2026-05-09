@@ -43,7 +43,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 pb-20">
-      <RealTimeListener channel={`order-${workOrder.id}`} />
+      <RealTimeListener event={`order-${workOrder.id}`} />
       
       <div className="flex justify-between items-center">
         <Link 
