@@ -54,7 +54,12 @@ export default async function TrackingPage({ params }: { params: { id: string } 
           <span>Vissza a főoldalra</span>
         </Link>
         <div className="flex items-center gap-3">
-          <StickerPrinter workOrder={workOrder} baseUrl={settings.baseUrl} logoPath={settings.logoPath} />
+          <StickerPrinter 
+            workOrder={workOrder} 
+            baseUrl={settings.baseUrl} 
+            logoPath={settings.logoPath} 
+            workshopName={settings.workshopName}
+          />
           <DeleteWorkOrder workOrderId={workOrder.id} />
         </div>
       </div>
