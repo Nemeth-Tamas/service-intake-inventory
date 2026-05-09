@@ -32,9 +32,12 @@ COPY --from=builder /app/prisma.config.js ./prisma.config.js
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Persistence setup
+# Persistence setup: SQLite needs write access to the DIRECTORY to create journal files
 RUN mkdir -p /app/prisma/data /app/public/uploads /app/public/archives && \
-    chown -R nextjs:nodejs /app/prisma/data /app/public/uploads /app/public/archives
+    chown -R nextjs:nodejs /app/prisma && \
+    chown -R nextjs:nodejs /app/public/uploads && \
+    chown -R nextjs:nodejs /app/public/archives && \
+    chmod -R 775 /app/prisma/data
 
 USER nextjs
 EXPOSE 3000
