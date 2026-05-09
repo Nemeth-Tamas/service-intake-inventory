@@ -226,6 +226,45 @@ export async function updatePhotoDescription(photoId: string, description: strin
   revalidatePath(`/t/${workOrderId}`);
 }
 
+export async function deletePhoto(photoId: string, workOrderId: string) {
+  const photo = await prisma.photo.findUnique({ where: { id: photoId } });
+  if (photo) {
+    try {
+      await unlink(join(process.cwd(), 'public', photo.filePath));
+    } catch (e) {}
+    await prisma.photo.delete({ where: { id: photoId } });
+  }
+  revalidatePath(`/t/${workOrderId}`);
+}
+
+export async function updateWorkOrderDetails(formData: FormData) {
+  const id = formData.get('id') as string;
+  const customerName = formData.get('customerName') as string;
+  const customerContact = formData.get('customerContact') as string;
+  const deviceType = formData.get('deviceType') as string;
+  const serialNumber = formData.get('serialNumber') as string;
+  const condition = formData.get('condition') as string;
+  const complaint = formData.get('complaint') as string;
+  const estimatedDoneStr = formData.get('estimatedDone') as string;
+  const estimatedDone = estimatedDoneStr ? new Date(estimatedDoneStr) : null;
+
+  await prisma.workOrder.update({
+    where: { id },
+    data: {
+      customerName,
+      customerContact,
+      deviceType,
+      serialNumber,
+      condition,
+      complaint,
+      estimatedDone,
+    },
+  });
+
+  revalidatePath(`/t/${id}`);
+  revalidatePath('/');
+}
+
 export async function updatePriority(workOrderId: string, priority: string) {
   await prisma.workOrder.update({
     where: { id: workOrderId },

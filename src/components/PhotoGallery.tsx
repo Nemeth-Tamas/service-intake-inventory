@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { X, Download, MessageSquare, Save } from 'lucide-react';
 import { updatePhotoDescription } from '@/lib/actions';
+import DeletePhoto from './DeletePhoto';
 
 interface Photo {
   id: string;
@@ -44,7 +45,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {photos.map((photo) => {
           const timestamp = new Date(photo.createdAt).getTime();
           // Use /api/media proxy to bypass Next.js stale file cache
@@ -52,19 +53,24 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
           const cacheBustedSrc = `${proxyPath}?t=${timestamp}`;
           
           return (
-            <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group cursor-pointer">
+            <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden border shadow-sm group cursor-pointer bg-gray-100">
               <Image 
                 src={cacheBustedSrc} 
                 alt="Device photo" 
                 fill 
                 unoptimized
                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 200px"
-                className="object-cover"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
                 onClick={() => openLightbox(photo)}
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-2 truncate opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-medium">
                 {photo.description || 'Nincs leírás'}
               </div>
+
+              {/* Action Buttons */}
+              <DeletePhoto photoId={photo.id} workOrderId={workOrderId} />
+              
               <a 
                 href={proxyPath} 
                 download={photo.filePath.split('/').pop()}
@@ -72,14 +78,14 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
                 title="Kép letöltése"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Download size={16} />
+                <Download size={14} />
               </a>
             </div>
           );
         })}
         {photos.length === 0 && (
-          <div className="col-span-full py-8 text-center text-gray-400 border-2 border-dashed rounded-lg">
-            Még nincsenek fotók.
+          <div className="col-span-full py-12 text-center text-gray-400 border-2 border-dashed rounded-3xl bg-gray-50/50">
+            Még nincsenek fotók feltöltve.
           </div>
         )}
       </div>
@@ -87,21 +93,21 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
       {/* Lightbox Modal */}
       {selectedPhoto && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-200 cursor-zoom-out"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 animate-in fade-in duration-200 cursor-zoom-out"
           onClick={closeLightbox}
         >
           <button 
             onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
-            className="absolute top-4 right-4 text-white hover:text-gray-300 z-50 bg-black/20 p-2 rounded-full cursor-pointer"
+            className="absolute top-6 right-6 text-white hover:text-gray-300 z-[110] bg-black/40 p-3 rounded-full cursor-pointer transition-colors"
           >
             <X size={32} />
           </button>
 
           <div 
-            className="max-w-5xl w-full flex flex-col md:flex-row gap-6 h-full max-h-[90vh] cursor-default"
+            className="max-w-6xl w-full flex flex-col md:flex-row gap-6 h-full max-h-[90vh] cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative flex-1 bg-black rounded-xl overflow-hidden shadow-2xl min-h-[50vh]">
+            <div className="relative flex-1 bg-black rounded-2xl overflow-hidden shadow-2xl min-h-[50vh] flex items-center justify-center border border-white/10">
               <Image 
                 src={`/api/media${selectedPhoto.filePath}?t=${new Date(selectedPhoto.createdAt).getTime()}`} 
                 alt="Full size" 
@@ -113,33 +119,35 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
               />
             </div>
 
-            <div className="w-full md:w-80 bg-white rounded-xl p-6 flex flex-col shadow-2xl">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800">
-                <MessageSquare size={20} className="text-blue-600" /> Megjegyzés
-              </h3>
+            <div className="w-full md:w-96 bg-white rounded-3xl p-8 flex flex-col shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
+                  <MessageSquare size={24} className="text-blue-600" /> Megjegyzés
+                </h3>
+              </div>
               
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Írj egy megjegyzést a fotóhoz..."
-                className="flex-1 w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none text-gray-700 text-sm mb-4 bg-gray-50"
+                placeholder="Írj egy részletes műszaki megjegyzést a fotóhoz..."
+                className="flex-1 w-full p-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-gray-700 leading-relaxed text-sm bg-gray-50 mb-6 shadow-inner"
               />
 
-              <button
-                onClick={handleSaveDescription}
-                disabled={isSaving}
-                className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {isSaving ? 'Mentés...' : <><Save size={18} /> Mentés</>}
-              </button>
+              <div className="space-y-4">
+                <button
+                  onClick={handleSaveDescription}
+                  disabled={isSaving}
+                  className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-100 disabled:opacity-50"
+                >
+                  {isSaving ? 'Mentés...' : <><Save size={20} /> Leírás Mentése</>}
+                </button>
 
-              <div className="mt-6 pt-6 border-t border-gray-100">
                 <a 
                   href={`/api/media${selectedPhoto.filePath}`} 
                   download 
-                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition"
+                  className="flex items-center justify-center gap-2 py-3 text-sm font-bold text-gray-500 hover:text-blue-600 transition bg-gray-50 rounded-xl hover:bg-blue-50"
                 >
-                  <Download size={16} /> Teljes felbontású kép letöltése
+                  <Download size={18} /> Eredeti Kép Letöltése
                 </a>
               </div>
             </div>

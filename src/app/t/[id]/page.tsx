@@ -8,8 +8,9 @@ import StatusSelector from '@/components/StatusSelector';
 import PrioritySelector from '@/components/PrioritySelector';
 import PhotoGallery from '@/components/PhotoGallery';
 import StickerPrinter from '@/components/StickerPrinter';
-import DeleteWorkOrder from '@/components/DeleteWorkOrder';
 import DeviceHistory from '@/components/DeviceHistory';
+import EditWorkOrder from '@/components/EditWorkOrder';
+import DeleteWorkOrder from '@/components/DeleteWorkOrder';
 import { addNote, getSettings } from '@/lib/actions';
 import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import Image from 'next/image';
@@ -47,7 +48,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
           className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-700 transition font-medium"
         >
           <ArrowLeft size={20} />
-          <span>Vissza</span>
+          <span>Vissza a főoldalra</span>
         </Link>
         <div className="flex items-center gap-3">
           <StickerPrinter workOrder={workOrder} baseUrl={settings.baseUrl} logoPath={settings.logoPath} />
@@ -68,6 +69,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
                   <Calendar size={14} /> Határidő: {workOrder.estimatedDone.toLocaleDateString('hu-HU')}
                 </span>
               )}
+              <EditWorkOrder workOrder={workOrder} />
             </div>
           </div>
           <div className="w-full md:w-auto">
