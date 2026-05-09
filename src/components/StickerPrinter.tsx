@@ -48,14 +48,14 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
             .sticker-container {
               width: 60mm;
               height: 40mm;
-              padding: 4mm;
+              padding: 3mm;
               display: flex;
               align-items: center;
               font-family: 'Arial', sans-serif;
             }
             .qr-side { 
-              width: 32mm; 
-              height: 32mm; 
+              width: 28mm; 
+              height: 28mm; 
               flex-shrink: 0; 
               display: flex; 
               align-items: center; 
@@ -68,43 +68,54 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
             }
             .logo-overlay { 
               position: absolute; 
-              width: 8mm; 
-              height: 8mm; 
+              width: 7mm; 
+              height: 7mm; 
               background: white; 
-              padding: 0.5mm; 
-              border-radius: 1.5mm;
+              padding: 0.3mm; 
+              border-radius: 1mm;
               z-index: 10;
               top: 50%;
               left: 50%;
               transform: translate(-50%, -50%);
-              border: 0.5mm solid #fff;
+              border: 0.3mm solid #fff;
             }
             .info-side { 
               flex: 1; 
               height: 32mm;
               display: flex; 
               flex-direction: column; 
-              padding-left: 4mm;
+              padding-left: 3mm;
               overflow: hidden; 
               justify-content: space-between;
+              border-left: 1px solid #eee;
             }
             .id-header { 
               border-bottom: 2px solid #000; 
-              padding-bottom: 1mm;
-              margin-bottom: 2mm;
+              padding-bottom: 0.5mm;
+              margin-bottom: 1.5mm;
             }
-            .id-text { font-size: 16pt; font-weight: 900; font-family: monospace; }
-            .details { flex-grow: 1; display: flex; flex-direction: column; gap: 1mm; }
-            .text { font-size: 8pt; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; font-weight: bold; }
+            .id-text { font-size: 14pt; font-weight: 900; font-family: monospace; letter-spacing: -0.5mm; }
+            .details { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5mm; justify-content: center; }
+            .text { 
+              font-size: 7.5pt; 
+              line-height: 1; 
+              white-space: nowrap; 
+              overflow: hidden; 
+              text-overflow: ellipsis; 
+              color: #000; 
+              font-weight: bold; 
+              max-width: 25mm;
+            }
             .priority-box { 
-              font-size: 9pt; 
+              font-size: 8pt; 
               font-weight: 900; 
               text-transform: uppercase; 
-              border: 2px solid #000; 
-              padding: 1mm 2mm; 
+              border: 1.5px solid #000; 
+              padding: 0.5mm 2mm; 
               align-self: flex-start;
               background: #000 !important;
               color: #fff !important;
+              margin-top: 1mm;
             }
           </style>
         </head>
@@ -119,8 +130,8 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
                 <div class="id-text">${workOrder.id.slice(-6).toUpperCase()}</div>
               </div>
               <div class="details">
-                <div class="text">ÜGYFÉL: ${workOrder.customerName || '-'}</div>
-                <div class="text">TÍPUS: ${workOrder.deviceType || '-'}</div>
+                <div class="text">UGYFEL: ${workOrder.customerName || '-'}</div>
+                <div class="text">TIPUS: ${workOrder.deviceType || '-'}</div>
                 <div class="text">S/N: ${workOrder.serialNumber || '-'}</div>
               </div>
               <div class="priority-box">${workOrder.priority}</div>
@@ -131,7 +142,7 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
               setTimeout(() => {
                 window.print();
                 window.close();
-              }, 300);
+              }, 400);
             };
           </script>
         </body>
