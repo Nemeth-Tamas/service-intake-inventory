@@ -10,6 +10,7 @@ interface Photo {
   filePath: string;
   description: string | null;
   workOrderId: string;
+  createdAt: Date | string;
 }
 
 export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[], workOrderId: string }) {
@@ -44,31 +45,36 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {photos.map((photo) => (
-          <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group cursor-pointer">
-            <Image 
-              src={photo.filePath} 
-              alt="Device photo" 
-              fill 
-              unoptimized
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 200px"
-              className="object-cover"
-              onClick={() => openLightbox(photo)}
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              {photo.description || 'Nincs leírás'}
+        {photos.map((photo) => {
+          const timestamp = new Date(photo.createdAt).getTime();
+          const cacheBustedSrc = `${photo.filePath}?t=${timestamp}`;
+          
+          return (
+            <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group cursor-pointer">
+              <Image 
+                src={cacheBustedSrc} 
+                alt="Device photo" 
+                fill 
+                unoptimized
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 200px"
+                className="object-cover"
+                onClick={() => openLightbox(photo)}
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {photo.description || 'Nincs leírás'}
+              </div>
+              <a 
+                href={photo.filePath} 
+                download={photo.filePath.split('/').pop()}
+                className="absolute top-1 right-1 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-md text-gray-700 hover:text-blue-600 transition-opacity opacity-0 group-hover:opacity-100 z-10"
+                title="Kép letöltése"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Download size={16} />
+              </a>
             </div>
-            <a 
-              href={photo.filePath} 
-              download={photo.filePath.split('/').pop()}
-              className="absolute top-1 right-1 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-md text-gray-700 hover:text-blue-600 transition-opacity opacity-0 group-hover:opacity-100 z-10"
-              title="Kép letöltése"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Download size={16} />
-            </a>
-          </div>
-        ))}
+          );
+        })}
         {photos.length === 0 && (
           <div className="col-span-full py-8 text-center text-gray-400 border-2 border-dashed rounded-lg">
             Még nincsenek fotók.
@@ -95,7 +101,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
           >
             <div className="relative flex-1 bg-black rounded-xl overflow-hidden shadow-2xl min-h-[50vh]">
               <Image 
-                src={selectedPhoto.filePath} 
+                src={`${selectedPhoto.filePath}?t=${new Date(selectedPhoto.createdAt).getTime()}`} 
                 alt="Full size" 
                 fill 
                 unoptimized

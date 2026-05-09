@@ -30,6 +30,11 @@ export async function POST(request: NextRequest) {
     }
 
     await writeFile(path, buffer);
+    // Explicitly set permissions for the new file on Linux to ensure it's readable immediately
+    try {
+      const { chmod } = await import('fs/promises');
+      await chmod(path, 0o666);
+    } catch (e) {}
 
     const photo = await prisma.photo.create({
       data: {
