@@ -1,51 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, chmod } from 'fs/promises';
 import { join } from 'path';
 import { prisma } from '@/lib/prisma';
 import { existsSync } from 'fs';
+import convert from 'heic-convert';
 
 export async function POST(request: NextRequest) {
-  const formData = await request.formData();
-  const file = formData.get('file') as File;
-  const workOrderId = formData.get('workOrderId') as string;
-
-  if (!file || !workOrderId) {
-    return NextResponse.json({ error: 'Missing data' }, { status: 400 });
-  }
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  // Generate a random ID for the image
-  const randomId = Math.random().toString(36).substring(2, 10);
-  const extension = file.name.split('.').pop() || 'png';
-  const fileName = `${workOrderId}-${randomId}.${extension}`;
-  const uploadDir = join(process.cwd(), 'public', 'uploads');
-  const path = join(uploadDir, fileName);
-
   try {
-    // Ensure directory exists
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const workOrderId = formData.get('workOrderId') as string;
+
+    if (!file || !workOrderId) {
+      return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+    }
+
+    let buffer = Buffer.from(await file.arrayBuffer());
+    let fileName = `${workOrderId}-${Math.random().toString(36).substring(2, 10)}`;
+    let extension = file.name.split('.').pop()?.toLowerCase() || 'png';
+
+    // Handle iPhone HEIC format
+    if (extension === 'heic' || extension === 'heif') {
+      console.log('Converting HEIC to JPEG...');
+      const outputBuffer = await convert({
+        buffer: buffer,
+        format: 'JPEG',
+        quality: 0.8
+      });
+      buffer = Buffer.from(outputBuffer);
+      extension = 'jpg';
+      console.log('Conversion successful.');
+    }
+
+    const finalFileName = `${fileName}.${extension}`;
+    const uploadDir = join(process.cwd(), 'public', 'uploads');
+    const fullPath = join(uploadDir, finalFileName);
+
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true });
     }
 
-    await writeFile(path, buffer);
-    // Explicitly set permissions for the new file on Linux to ensure it's readable immediately
-    try {
-      const { chmod } = await import('fs/promises');
-      await chmod(path, 0o666);
-    } catch (e) {}
+    await writeFile(fullPath, buffer);
+    // Ensure Linux read permissions immediately
+    try { await chmod(fullPath, 0o666); } catch (e) {}
 
     const photo = await prisma.photo.create({
       data: {
         workOrderId,
-        filePath: `/uploads/${fileName}`,
+        filePath: `/uploads/${finalFileName}`,
       },
     });
 
     return NextResponse.json({ success: true, photo });
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
+    console.error('Upload/Conversion error:', error);
+    return NextResponse.json({ error: 'Failed to process upload' }, { status: 500 });
   }
 }

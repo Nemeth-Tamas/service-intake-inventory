@@ -47,7 +47,9 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {photos.map((photo) => {
           const timestamp = new Date(photo.createdAt).getTime();
-          const cacheBustedSrc = `${photo.filePath}?t=${timestamp}`;
+          // Use /api/media proxy to bypass Next.js stale file cache
+          const proxyPath = `/api/media${photo.filePath}`;
+          const cacheBustedSrc = `${proxyPath}?t=${timestamp}`;
           
           return (
             <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group cursor-pointer">
@@ -64,7 +66,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
                 {photo.description || 'Nincs leírás'}
               </div>
               <a 
-                href={photo.filePath} 
+                href={proxyPath} 
                 download={photo.filePath.split('/').pop()}
                 className="absolute top-1 right-1 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-md text-gray-700 hover:text-blue-600 transition-opacity opacity-0 group-hover:opacity-100 z-10"
                 title="Kép letöltése"
@@ -101,7 +103,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
           >
             <div className="relative flex-1 bg-black rounded-xl overflow-hidden shadow-2xl min-h-[50vh]">
               <Image 
-                src={`${selectedPhoto.filePath}?t=${new Date(selectedPhoto.createdAt).getTime()}`} 
+                src={`/api/media${selectedPhoto.filePath}?t=${new Date(selectedPhoto.createdAt).getTime()}`} 
                 alt="Full size" 
                 fill 
                 unoptimized
@@ -133,7 +135,7 @@ export default function PhotoGallery({ photos, workOrderId }: { photos: Photo[],
 
               <div className="mt-6 pt-6 border-t border-gray-100">
                 <a 
-                  href={selectedPhoto.filePath} 
+                  href={`/api/media${selectedPhoto.filePath}`} 
                   download 
                   className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition"
                 >
