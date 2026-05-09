@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:/app/prisma/data/dev.db
+      - BASE_URL=http://localhost:3000
+    volumes:
+      - ./prisma/data:/app/prisma/data
+      - ./public/uploads:/app/public/uploads
+    restart: always

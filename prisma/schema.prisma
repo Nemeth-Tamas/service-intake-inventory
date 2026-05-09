@@ -1,0 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model WorkOrder {
+  id              String   @id @default(cuid())
+  customerName    String?
+  customerContact String?
+  deviceType      String?
+  serialNumber    String?
+  condition       String?
+  complaint       String?
+  status          String   @default("Átvétel alatt") // Statuses in Hungarian
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  notes           Note[]
+  photos          Photo[]
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId String
+  text        String
+  createdAt   DateTime  @default(now())
+}
+
+model Photo {
+  id          String    @id @default(cuid())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId String
+  filePath    String
+  createdAt   DateTime  @default(now())
+}
