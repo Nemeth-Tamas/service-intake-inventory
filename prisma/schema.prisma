@@ -29,9 +29,11 @@ model WorkOrder {
 }
 
 model Settings {
-  id       Int    @id @default(1)
-  baseUrl  String @default("http://localhost:3000")
-  logoPath String?
+  id             Int     @id @default(1)
+  baseUrl        String  @default("http://localhost:3000")
+  logoPath       String?
+  workshopName   String  @default("Szerviz Központ")
+  technicianName String?
 }
 
 model StatusLog {

@@ -11,12 +11,24 @@ export const dynamic = 'force-dynamic';
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; tab?: string }>;
 }) {
-  const { q, status } = await searchParams;
+  const { q, status, tab } = await searchParams;
 
+  const currentTab = tab || 'bench';
   const where: any = {};
-  if (status && status !== 'Összes') where.status = status;
+  
+  if (currentTab === 'archive') {
+    where.status = 'Kiadva';
+  } else {
+    where.NOT = { status: 'Kiadva' };
+  }
+
+  // Override status filter if provided
+  if (status && status !== 'Összes') {
+    where.status = status;
+  }
+
   if (q) {
     where.OR = [
       { customerName: { contains: q } },
@@ -67,7 +79,7 @@ export default async function Home({
       </header>
 
       <Suspense fallback={<div className="h-24 bg-gray-100 animate-pulse rounded-2xl" />}>
-        <DashboardStats />
+        <DashboardStats currentTab={currentTab} />
       </Suspense>
 
       <Suspense fallback={<div>Betöltés...</div>}>
@@ -76,7 +88,7 @@ export default async function Home({
 
       <section className="space-y-4">
         <h2 className="flex items-center gap-2 font-bold text-xl text-gray-800">
-          <ListChecks size={24} /> Aktív Munkalapok {workOrders.length > 0 && `(${workOrders.length})`}
+          <ListChecks size={24} /> {currentTab === 'archive' ? 'Archivált Munkalapok' : 'Aktív Munkalapok'} {workOrders.length > 0 && `(${workOrders.length})`}
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

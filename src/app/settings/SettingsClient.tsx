@@ -1,12 +1,12 @@
 'use client';
 
-import { uploadLogo, deleteLogo, runCleanup } from '@/lib/actions';
+import { uploadLogo, deleteLogo, runCleanup, updateSettings } from '@/lib/actions';
 import Link from 'next/link';
-import { ArrowLeft, Save, Globe, Upload, Trash2, ShieldAlert, Sparkles, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, Globe, Upload, Trash2, ShieldAlert, Sparkles, RefreshCw, Database, HardDrive, UserCheck } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import Image from 'next/image';
 
-export default function SettingsPage({ settings }: { settings: any }) {
+export default function SettingsClient({ settings, storage }: { settings: any, storage: any }) {
   const [isPending, startTransition] = useTransition();
   const [cleanupResult, setCleanupCount] = useState<number | null>(null);
 
@@ -44,115 +44,172 @@ export default function SettingsPage({ settings }: { settings: any }) {
       </Link>
 
       <div className="space-y-8">
-        {/* Connection Settings */}
+        {/* Connection & Branding Settings */}
         <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-          <h1 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-3">
-            <Globe className="text-blue-600" /> Rendszer Beállítások
+          <h1 className="text-2xl font-bold mb-8 text-gray-900 flex items-center gap-3">
+            <Globe className="text-blue-600" /> Rendszer & Branding
           </h1>
 
           <form action={async (fd) => {
             const url = fd.get('baseUrl') as string;
+            const wName = fd.get('workshopName') as string;
+            const tName = fd.get('technicianName') as string;
             startTransition(async () => {
-              const { updateSettings } = await import('@/lib/actions');
-              await updateSettings(url);
+              await updateSettings(url, wName, tName);
             });
-          }} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Alap URL (BASE_URL)</label>
-              <input
-                name="baseUrl"
-                type="url"
-                defaultValue={settings.baseUrl}
-                placeholder="http://192.168.1.10:3000"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
-                required
-              />
+          }} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Hálózati Beállítás</h3>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Alap URL (BASE_URL)</label>
+                  <input
+                    name="baseUrl"
+                    type="url"
+                    defaultValue={settings.baseUrl}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <UserCheck size={14} /> Műhely Adatok
+                </h3>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Műhely Neve</label>
+                  <input
+                    name="workshopName"
+                    type="text"
+                    defaultValue={settings.workshopName}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Technikus Neve</label>
+                  <input
+                    name="technicianName"
+                    type="text"
+                    defaultValue={settings.technicianName || ''}
+                    placeholder="Példa János"
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
+                  />
+                </div>
+              </div>
             </div>
+
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition disabled:opacity-50"
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-100 disabled:opacity-50"
             >
-              <Save size={20} /> Beállítások Mentése
+              <Save size={20} /> Összes Beállítás Mentése
             </button>
           </form>
         </div>
 
-        {/* Branding Settings */}
+        {/* Logo Upload */}
         <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
           <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-3">
-            <Sparkles className="text-purple-600" /> Műhely Branding
+            <Sparkles className="text-purple-600" /> Vizuális Megjelenés
           </h2>
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-4">Műhely Logó (PDF és Matrica fejléchez)</label>
-              
-              <div className="flex items-center gap-6">
-                <div className="w-32 h-32 border-2 border-dashed rounded-2xl flex items-center justify-center bg-gray-50 overflow-hidden relative group">
-                  {settings.logoPath ? (
-                    <>
-                      <Image 
-                        src={settings.logoPath} 
-                        alt="Logo" 
-                        fill 
-                        unoptimized
-                        sizes="128px"
-                        className="object-contain p-2" 
-                      />
-                      <button 
-                        onClick={() => deleteLogo()}
-                        className="absolute inset-0 bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={24} />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center p-4">
-                      <Upload className="mx-auto text-gray-400 mb-2" size={24} />
-                      <span className="text-[10px] text-gray-400 font-bold uppercase">Feltöltés</span>
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="absolute inset-0 opacity-0 cursor-pointer" 
-                    onChange={handleLogoUpload}
-                    disabled={isPending}
+          <div className="flex flex-col md:flex-row items-center gap-8 bg-gray-50 p-6 rounded-3xl border border-gray-100">
+            <div className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-3xl flex items-center justify-center bg-white overflow-hidden relative group shadow-inner">
+              {settings.logoPath ? (
+                <>
+                  <Image 
+                    src={`/api/media${settings.logoPath}`} 
+                    alt="Logo" 
+                    fill 
+                    unoptimized
+                    sizes="160px"
+                    className="object-contain p-4" 
                   />
+                  <button 
+                    onClick={() => { if(confirm('Törlöd a logót?')) deleteLogo(); }}
+                    className="absolute inset-0 bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={32} />
+                  </button>
+                </>
+              ) : (
+                <div className="text-center p-4">
+                  <Upload className="mx-auto text-gray-300 mb-2" size={32} />
+                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Logo Feltöltés</span>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <p className="text-sm text-gray-600 font-medium">Javasolt méret: <span className="text-blue-600">512x512px</span></p>
-                  <p className="text-xs text-gray-400 italic">Átlátszó PNG vagy fehér hátterű JPG ajánlott a jegyzőkönyvekhez.</p>
-                </div>
-              </div>
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="absolute inset-0 opacity-0 cursor-pointer" 
+                onChange={handleLogoUpload}
+                disabled={isPending}
+              />
+            </div>
+            <div className="flex-1 space-y-3">
+              <h4 className="font-bold text-gray-800">Műhely Logó</h4>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                A feltöltött logó automatikusan megjelenik minden **PDF jegyzőkönyv** fejlécében és a **QR kódos matricák** közepén.
+              </p>
+              <p className="text-xs text-blue-600 font-bold italic">Tipp: Használj átlátszó hátterű PNG fájlt!</p>
             </div>
           </div>
         </div>
 
-        {/* Maintenance Settings */}
-        <div className="bg-red-50 shadow-lg rounded-2xl p-8 border border-red-100">
-          <h2 className="text-2xl font-bold mb-4 text-red-900 flex items-center gap-3">
-            <ShieldAlert className="text-red-600" /> Karbantartás
-          </h2>
-          <p className="text-sm text-red-700 mb-6 font-medium">
-            Tárhely felszabadítása: 30 napnál régebbi, már átadott (Kiadva) munkalapok fotóinak végleges törlése. Az archivált PDF-ek megmaradnak.
-          </p>
+        {/* Data & Storage Management */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Backup */}
+          <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100 space-y-6">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+              <Database className="text-green-600" /> Adatmentés
+            </h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Töltsd le a teljes adatbázist (`dev.db`) egyetlen fájlként. Javasolt hetente egyszer biztonsági mentést készíteni.
+            </p>
+            <a
+              href="/api/backup"
+              className="flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-100"
+            >
+              <Database size={18} /> Adatbázis Letöltése (.db)
+            </a>
+          </div>
 
-          <button
-            onClick={onCleanup}
-            disabled={isPending}
-            className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 transition shadow-lg shadow-red-200 disabled:opacity-50"
-          >
-            {isPending ? <RefreshCw className="animate-spin" /> : <Trash2 size={20} />}
-            Felesleges Fotók Törlése
-          </button>
-
-          {cleanupResult !== null && (
-            <div className="mt-4 p-4 bg-white border border-red-200 rounded-xl text-red-800 text-sm font-bold animate-in slide-in-from-top-2">
-              Sikeres karbantartás: {cleanupResult} munkalap fotói lettek törölve.
+          {/* Storage Usage */}
+          <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100 space-y-6">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+              <HardDrive className="text-blue-600" /> Tárhely Használat
+            </h2>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm font-bold">
+                <span className="text-gray-500 uppercase tracking-tighter">Médiatár Mérete</span>
+                <span className="text-blue-600">{storage.sizeFormatted}</span>
+              </div>
+              <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden shadow-inner">
+                <div 
+                  className="bg-blue-500 h-full rounded-full transition-all duration-1000" 
+                  style={{ width: `${Math.min((storage.sizeBytes / (100 * 1024 * 1024)) * 100, 100)}%` }} // 100MB is the "visual" max for the bar
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 font-medium italic text-right">Összesen {storage.totalJobs} munkalap fotói és PDF-jei.</p>
             </div>
-          )}
+            
+            <button
+              onClick={onCleanup}
+              disabled={isPending}
+              className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold hover:bg-red-100 transition border border-red-100 disabled:opacity-50"
+            >
+              {isPending ? <RefreshCw className="animate-spin" size={18} /> : <Trash2 size={18} />}
+              Old fotók törlése (30 nap+)
+            </button>
+            {cleanupResult !== null && (
+              <p className="text-xs text-center text-red-600 font-bold animate-bounce">
+                Sikeres törlés! {cleanupResult} munkalap felszabadítva.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

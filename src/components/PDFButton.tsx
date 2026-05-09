@@ -12,7 +12,7 @@ interface Props {
 export default function PDFButton({ workOrder }: Props) {
   const generatePDF = async () => {
     const settings = await getSettings();
-    const logoUrl = settings.logoPath;
+    const logoUrl = settings.logoPath ? `/api/media${settings.logoPath}` : null;
 
     const fixChars = (str: string | null | undefined) => {
       if (!str) return '-';
@@ -38,7 +38,10 @@ export default function PDFButton({ workOrder }: Props) {
       <div style="border-bottom: 4px solid #1e40af; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 20px;">
           ${logoUrl ? `<img src="${logoUrl}" style="height: 60px; width: 60px; object-fit: contain;" />` : ''}
-          <h1 style="font-size: 32px; margin: 0; font-weight: 800; color: #1e40af;">${fixChars('SZERVIZ JEGYZÖKÖNYV')}</h1>
+          <div>
+            <h1 style="font-size: 28px; margin: 0; font-weight: 800; color: #1e40af;">${fixChars('SZERVIZ JEGYZÖKÖNYV')}</h1>
+            <p style="margin: 0; font-size: 14px; color: #666; font-weight: bold;">${fixChars(settings.workshopName)}</p>
+          </div>
         </div>
         <div style="text-align: right;">
           <p style="margin: 0; font-size: 14px; color: #666;">Munkalap: <strong>${workOrder.id.slice(-6).toUpperCase()}</strong></p>
@@ -89,10 +92,10 @@ export default function PDFButton({ workOrder }: Props) {
           <h2 style="font-size: 18px; color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 5px; margin-bottom: 10px;">Csatolt Fotók</h2>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             ${workOrder.photos.map((p: any) => `
-              <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #fff;">
-                <img src="${p.filePath}" style="width: 100%; max-height: 450px; object-fit: contain; margin-bottom: 12px; border-radius: 4px; display: block;" />
+              <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; background: #fff; display: flex; flex-direction: column;">
+                <img src="/api/media${p.filePath}" style="width: 100%; max-height: 450px; object-fit: contain; margin-bottom: 12px; border-radius: 4px; display: block;" />
                 <p style="font-size: 11px; color: #94a3b8; margin: 0;">${formatDate(p.createdAt)}</p>
-                <p style="font-size: 14px; margin: 5px 0 0; color: #1e293b;">${p.description ? fixChars(p.description) : `<i>${fixChars('Nincs leírás')}</i>`}</p>
+                <p style="font-size: 14px; margin: 5px 0 0; color: #1e293b; line-height: 1.4;">${p.description ? fixChars(p.description) : `<i>${fixChars('Nincs leírás')}</i>`}</p>
               </div>
             `).join('')}
           </div>
@@ -111,8 +114,10 @@ export default function PDFButton({ workOrder }: Props) {
         </div>
       ` : ''}
 
-      <div style="margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-        <p>${fixChars('Generálva a Szerviz Kezelő alkalmazással')} • ${formatDate(new Date())}</p>
+      <div style="margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center;">
+        <p style="font-size: 14px; font-weight: bold; color: #111; margin: 0;">${fixChars(settings.workshopName)}</p>
+        ${settings.technicianName ? `<p style="font-size: 12px; color: #666; margin: 2px 0;">Technikus: ${fixChars(settings.technicianName)}</p>` : ''}
+        <p style="font-size: 10px; color: #94a3b8; margin-top: 10px;">${fixChars('Generálva a Szerviz Kezelő alkalmazással')} • ${formatDate(new Date())}</p>
       </div>
     `;
 

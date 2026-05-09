@@ -2,7 +2,7 @@
 
 import { prisma } from './prisma';
 import { revalidatePath } from 'next/cache';
-import { writeFile, mkdir, unlink } from 'fs/promises';
+import { writeFile, mkdir, unlink, stat, readdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { publishUpdate } from './realtime';
@@ -52,19 +52,20 @@ export async function getSettings() {
   let settings = await prisma.settings.findFirst({ where: { id: 1 } });
   if (!settings) {
     settings = await prisma.settings.create({
-      data: { id: 1, baseUrl: 'http://localhost:3000' }
+      data: { id: 1, baseUrl: 'http://localhost:3000', workshopName: 'Szerviz Központ' }
     });
   }
   return settings;
 }
 
-export async function updateSettings(baseUrl: string) {
+export async function updateSettings(baseUrl: string, workshopName: string, technicianName: string) {
   await prisma.settings.update({
     where: { id: 1 },
-    data: { baseUrl }
+    data: { baseUrl, workshopName, technicianName }
   });
   revalidatePath('/');
   revalidatePath('/settings');
+  await triggerUpdate();
 }
 
 export async function uploadLogo(formData: FormData) {
@@ -94,6 +95,7 @@ export async function uploadLogo(formData: FormData) {
 
   revalidatePath('/settings');
   revalidatePath('/');
+  await triggerUpdate();
   return { success: true, logoPath: filePath };
 }
 
@@ -110,6 +112,7 @@ export async function deleteLogo() {
   }
   revalidatePath('/settings');
   revalidatePath('/');
+  await triggerUpdate();
 }
 
 export async function getDashboardStats() {
@@ -117,13 +120,42 @@ export async function getDashboardStats() {
   const todayStart = new Date(now.setHours(0, 0, 0, 0));
   const todayEnd = new Date(now.setHours(23, 59, 59, 999));
 
-  const [urgent, today, ready] = await Promise.all([
+  const [urgent, today, ready, active, archived] = await Promise.all([
     prisma.workOrder.count({ where: { priority: 'Sürgős', NOT: { status: 'Kiadva' } } }),
     prisma.workOrder.count({ where: { estimatedDone: { gte: todayStart, lte: todayEnd }, NOT: { status: 'Kiadva' } } }),
-    prisma.workOrder.count({ where: { status: 'Kész / Átvehető' } })
+    prisma.workOrder.count({ where: { status: 'Kész / Átvehető' } }),
+    prisma.workOrder.count({ where: { NOT: { status: 'Kiadva' } } }),
+    prisma.workOrder.count({ where: { status: 'Kiadva' } })
   ]);
 
-  return { urgent, today, ready };
+  return { urgent, today, ready, active, archived };
+}
+
+export async function getStorageUsage() {
+  const uploadsDir = join(process.cwd(), 'public', 'uploads');
+  const archivesDir = join(process.cwd(), 'public', 'archives');
+  
+  let totalSize = 0;
+  
+  async function getDirSize(dir: string) {
+    if (!existsSync(dir)) return;
+    const files = await readdir(dir);
+    for (const file of files) {
+      const stats = await stat(join(dir, file));
+      totalSize += stats.size;
+    }
+  }
+
+  await getDirSize(uploadsDir);
+  await getDirSize(archivesDir);
+
+  const totalJobs = await prisma.workOrder.count();
+  
+  return {
+    sizeBytes: totalSize,
+    sizeFormatted: (totalSize / (1024 * 1024)).toFixed(2) + ' MB',
+    totalJobs
+  };
 }
 
 export async function getPreviousRepairs(serialNumber: string, currentId: string) {
