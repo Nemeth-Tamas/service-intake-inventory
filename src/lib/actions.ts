@@ -235,3 +235,40 @@ export async function updatePriority(workOrderId: string, priority: string) {
   revalidatePath(`/t/${workOrderId}`);
   revalidatePath('/');
 }
+
+export async function deleteWorkOrder(workOrderId: string) {
+  // 1. Get all associated files first
+  const order = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+    include: { photos: true }
+  });
+
+  if (!order) return { success: false };
+
+  // 2. Delete photos from filesystem
+  for (const photo of order.photos) {
+    try {
+      await unlink(join(process.cwd(), 'public', photo.filePath));
+    } catch (e) {}
+  }
+
+  // 3. Delete archived PDF if exists
+  if (order.archivedPdfPath) {
+    try {
+      await unlink(join(process.cwd(), 'public', order.archivedPdfPath));
+    } catch (e) {}
+  }
+
+  // 4. Delete from database (Prisma handles cascading if configured, but explicit is safer here for SQLite)
+  // We need to delete logs, notes, and photos first due to FK constraints
+  await prisma.$transaction([
+    prisma.statusLog.deleteMany({ where: { workOrderId } }),
+    prisma.note.deleteMany({ where: { workOrderId } }),
+    prisma.photo.deleteMany({ where: { workOrderId } }),
+    prisma.workOrder.delete({ where: { id: workOrderId } }),
+  ]);
+
+  revalidatePath('/');
+  const redirect = (await import('next/navigation')).redirect;
+  redirect('/');
+}

@@ -8,6 +8,7 @@ import StatusSelector from '@/components/StatusSelector';
 import PrioritySelector from '@/components/PrioritySelector';
 import PhotoGallery from '@/components/PhotoGallery';
 import StickerPrinter from '@/components/StickerPrinter';
+import DeleteWorkOrder from '@/components/DeleteWorkOrder';
 import DeviceHistory from '@/components/DeviceHistory';
 import { addNote, getSettings } from '@/lib/actions';
 import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
@@ -46,9 +47,12 @@ export default async function TrackingPage({ params }: { params: { id: string } 
           className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-700 transition font-medium"
         >
           <ArrowLeft size={20} />
-          <span>Vissza a főoldalra</span>
+          <span>Vissza</span>
         </Link>
-        <StickerPrinter workOrder={workOrder} baseUrl={settings.baseUrl} logoPath={settings.logoPath} />
+        <div className="flex items-center gap-3">
+          <StickerPrinter workOrder={workOrder} baseUrl={settings.baseUrl} logoPath={settings.logoPath} />
+          <DeleteWorkOrder workOrderId={workOrder.id} />
+        </div>
       </div>
 
       <div className="bg-white border rounded-2xl p-6 shadow-sm">
