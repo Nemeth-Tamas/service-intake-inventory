@@ -5,18 +5,14 @@ import { revalidatePath } from 'next/cache';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { pusherServer } from './pusher';
+import { publishUpdate } from './realtime';
 
-// Helper to trigger Pusher updates
+// Helper to trigger real-time updates
 async function triggerUpdate(workOrderId?: string) {
-  try {
-    if (workOrderId) {
-      await pusherServer.trigger(`order-${workOrderId}`, 'update', {});
-    }
-    await pusherServer.trigger('dashboard', 'update', {});
-  } catch (e) {
-    console.error('Pusher trigger error:', e);
+  if (workOrderId) {
+    await publishUpdate(`order-${workOrderId}`);
   }
+  await publishUpdate('dashboard');
 }
 
 export async function createWorkOrder(formData: FormData) {
