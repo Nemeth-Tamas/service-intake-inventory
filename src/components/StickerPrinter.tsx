@@ -26,63 +26,61 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
               margin: 0; 
               size: 60mm 40mm; 
             }
-            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
-            body { 
+            * { 
+              box-sizing: border-box; 
+              -webkit-print-color-adjust: exact; 
+              print-color-adjust: exact;
+            }
+            html, body { 
               margin: 0; 
               padding: 0;
               width: 60mm;
               height: 40mm;
-              display: flex;
-              align-items: center;
               background: white;
-              overflow: hidden;
             }
-            .sticker-content {
+            .sticker-wrapper {
+              width: 60mm;
+              height: 40mm;
+              padding: 3mm;
               display: flex;
-              width: 100%;
-              height: 100%;
-              padding: 2mm;
               align-items: center;
+              justify-content: flex-start;
+              font-family: 'Arial', sans-serif;
             }
             .qr-side { 
-              width: 32mm; 
-              height: 32mm; 
+              width: 30mm; 
+              height: 30mm; 
               flex-shrink: 0; 
               display: flex; 
               align-items: center; 
               justify-content: center; 
               position: relative;
-              background: white;
             }
             .logo-overlay { 
               position: absolute; 
-              width: 8mm; 
-              height: 8mm; 
+              width: 7mm; 
+              height: 7mm; 
               background: white; 
               padding: 0.5mm; 
               border-radius: 1mm;
               z-index: 10;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
             }
             .info-side { 
               flex: 1; 
-              height: 32mm;
+              height: 30mm;
               display: flex; 
               flex-direction: column; 
-              padding-left: 2mm;
+              padding-left: 3mm;
               overflow: hidden; 
-              font-family: 'Arial', sans-serif;
             }
             .id-box { 
               border-bottom: 2px solid #000; 
-              margin-bottom: 1mm;
+              margin-bottom: 1.5mm;
               padding-bottom: 0.5mm;
             }
             .id-text { font-size: 14pt; font-weight: 900; font-family: monospace; }
-            .details { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.5mm; }
-            .text { font-size: 7.5pt; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; font-weight: bold; }
+            .details { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.8mm; }
+            .text { font-size: 7.5pt; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; font-weight: 700; }
             .priority-badge { 
               font-size: 8pt; 
               font-weight: 900; 
@@ -90,17 +88,18 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
               border: 1.5pt solid #000; 
               padding: 0.5mm 2mm; 
               align-self: flex-start;
-              background: #000;
-              color: #fff;
-              margin-top: 1mm;
+              background: #000 !important;
+              color: #fff !important;
+              margin-top: 1.5mm;
             }
-            #qr svg, #qr canvas { width: 100% !important; height: 100% !important; display: block; }
+            /* Robust QR sizing */
+            #qr-canvas { width: 30mm !important; height: 30mm !important; display: block; }
           </style>
         </head>
         <body>
-          <div class="sticker-content">
+          <div class="sticker-wrapper">
             <div class="qr-side">
-              <div id="qr" style="width: 32mm; height: 32mm;"></div>
+              <canvas id="qr-canvas"></canvas>
               ${logoPath ? `<img src="${logoPath}" class="logo-overlay" />` : ''}
             </div>
             <div class="info-side">
@@ -108,8 +107,8 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
                 <div class="id-text">${workOrder.id.slice(-6).toUpperCase()}</div>
               </div>
               <div class="details">
-                <div class="text">Ügyfél: ${workOrder.customerName || '-'}</div>
-                <div class="text">Típus: ${workOrder.deviceType || '-'}</div>
+                <div class="text">ÜGYFÉL: ${workOrder.customerName || '-'}</div>
+                <div class="text">TÍPUS: ${workOrder.deviceType || '-'}</div>
                 <div class="text">S/N: ${workOrder.serialNumber || '-'}</div>
               </div>
               <div class="priority-badge">${workOrder.priority}</div>
@@ -117,31 +116,27 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath }: Props) 
           </div>
           <script src="https://cdn.jsdelivr.net/npm/qrcode_js@1.0.0/qrcode.min.js"></script>
           <script>
-            function doPrint() {
+            function startPrint() {
               try {
-                const qrContainer = document.getElementById("qr");
-                new QRCode(qrContainer, {
+                const canvas = document.getElementById("qr-canvas");
+                // Use a high-density QR for better scanning
+                new QRCode(canvas, {
                   text: "${qrUrl}",
-                  width: 256,
-                  height: 256,
-                  colorDark : "#000000",
-                  colorLight : "#ffffff",
+                  width: 200,
+                  height: 200,
                   correctLevel: QRCode.CorrectLevel.H
                 });
                 
-                // Wait for image rendering
+                // Absolute safety delay for the print system
                 setTimeout(() => {
                   window.print();
                   window.close();
-                }, 400);
+                }, 500);
               } catch (e) { 
                 console.error(e);
-                alert("QR Error: " + e.message);
               }
             }
-            
-            // Trigger as soon as scripts and possible logo are ready
-            window.onload = doPrint;
+            window.onload = startPrint;
           </script>
         </body>
       </html>

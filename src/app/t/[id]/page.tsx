@@ -11,6 +11,7 @@ import StickerPrinter from '@/components/StickerPrinter';
 import DeviceHistory from '@/components/DeviceHistory';
 import EditWorkOrder from '@/components/EditWorkOrder';
 import DeleteWorkOrder from '@/components/DeleteWorkOrder';
+import RealTimeListener from '@/components/RealTimeListener';
 import { addNote, getSettings } from '@/lib/actions';
 import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import Image from 'next/image';
@@ -42,6 +43,8 @@ export default async function TrackingPage({ params }: { params: { id: string } 
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 pb-20">
+      <RealTimeListener channel={`order-${workOrder.id}`} />
+      
       <div className="flex justify-between items-center">
         <Link 
           href="/" 

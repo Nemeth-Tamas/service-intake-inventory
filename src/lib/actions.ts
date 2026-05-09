@@ -5,6 +5,19 @@ import { revalidatePath } from 'next/cache';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { pusherServer } from './pusher';
+
+// Helper to trigger Pusher updates
+async function triggerUpdate(workOrderId?: string) {
+  try {
+    if (workOrderId) {
+      await pusherServer.trigger(`order-${workOrderId}`, 'update', {});
+    }
+    await pusherServer.trigger('dashboard', 'update', {});
+  } catch (e) {
+    console.error('Pusher trigger error:', e);
+  }
+}
 
 export async function createWorkOrder(formData: FormData) {
   const customerName = formData.get('customerName') as string;
@@ -34,6 +47,7 @@ export async function createWorkOrder(formData: FormData) {
     },
   });
 
+  await triggerUpdate();
   const redirect = (await import('next/navigation')).redirect;
   redirect(`/t/${workOrder.id}`);
 }
@@ -69,7 +83,6 @@ export async function uploadLogo(formData: FormData) {
   const filePath = `/uploads/${fileName}`;
   const fullPath = join(process.cwd(), 'public', filePath);
 
-  // Clean up old logo if exists
   const settings = await getSettings();
   if (settings.logoPath) {
     try {
@@ -153,6 +166,7 @@ export async function runCleanup() {
     purgedCount++;
   }
 
+  await triggerUpdate();
   revalidatePath('/');
   revalidatePath('/settings');
   return { success: true, purgedCount };
@@ -182,6 +196,7 @@ export async function archiveWorkOrderPdf(formData: FormData) {
       data: { archivedPdfPath: filePath }
     });
     
+    await triggerUpdate(workOrderId);
     return { success: true, filePath };
   } catch (error) {
     console.error('Archive error:', error);
@@ -200,6 +215,7 @@ export async function addNote(formData: FormData) {
     },
   });
 
+  await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
 }
 
@@ -214,6 +230,7 @@ export async function updateStatus(workOrderId: string, status: string) {
     },
   });
 
+  await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
 }
 
@@ -223,6 +240,7 @@ export async function updatePhotoDescription(photoId: string, description: strin
     data: { description },
   });
 
+  await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
 }
 
@@ -234,6 +252,7 @@ export async function deletePhoto(photoId: string, workOrderId: string) {
     } catch (e) {}
     await prisma.photo.delete({ where: { id: photoId } });
   }
+  await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
 }
 
@@ -261,6 +280,7 @@ export async function updateWorkOrderDetails(formData: FormData) {
     },
   });
 
+  await triggerUpdate(id);
   revalidatePath(`/t/${id}`);
   revalidatePath('/');
 }
@@ -271,12 +291,12 @@ export async function updatePriority(workOrderId: string, priority: string) {
     data: { priority },
   });
 
+  await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
   revalidatePath('/');
 }
 
 export async function deleteWorkOrder(workOrderId: string) {
-  // 1. Get all associated files first
   const order = await prisma.workOrder.findUnique({
     where: { id: workOrderId },
     include: { photos: true }
@@ -284,22 +304,18 @@ export async function deleteWorkOrder(workOrderId: string) {
 
   if (!order) return { success: false };
 
-  // 2. Delete photos from filesystem
   for (const photo of order.photos) {
     try {
       await unlink(join(process.cwd(), 'public', photo.filePath));
     } catch (e) {}
   }
 
-  // 3. Delete archived PDF if exists
   if (order.archivedPdfPath) {
     try {
       await unlink(join(process.cwd(), 'public', order.archivedPdfPath));
     } catch (e) {}
   }
 
-  // 4. Delete from database (Prisma handles cascading if configured, but explicit is safer here for SQLite)
-  // We need to delete logs, notes, and photos first due to FK constraints
   await prisma.$transaction([
     prisma.statusLog.deleteMany({ where: { workOrderId } }),
     prisma.note.deleteMany({ where: { workOrderId } }),
@@ -307,6 +323,7 @@ export async function deleteWorkOrder(workOrderId: string) {
     prisma.workOrder.delete({ where: { id: workOrderId } }),
   ]);
 
+  await triggerUpdate();
   revalidatePath('/');
   const redirect = (await import('next/navigation')).redirect;
   redirect('/');
