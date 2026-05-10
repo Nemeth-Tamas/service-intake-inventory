@@ -19,6 +19,7 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
+    "next-auth": "^5.0.0-beta.25",
     "pusher": "^5.3.3",
     "pusher-js": "^8.5.0",
     "qrcode.react": "^4.2.0",
