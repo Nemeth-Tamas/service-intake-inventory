@@ -137,5 +137,3 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
     document.body
   );
 }
-
-}
