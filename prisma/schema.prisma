@@ -62,6 +62,14 @@ model Note {
   createdAt   DateTime  @default(now())
 }
 
+model ActivityLog {
+  id          String   @id @default(cuid())
+  type        String   // INFO, WARNING, SUCCESS, SYSTEM
+  message     String
+  entityId    String?  // Optional reference to a WorkOrder ID
+  createdAt   DateTime @default(now())
+}
+
 model Photo {
   id          String    @id @default(cuid())
   workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])

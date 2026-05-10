@@ -25,6 +25,17 @@ async function logActivity(workOrderId: string, text: string) {
   });
 }
 
+// System log helper for Global Audit Log
+async function recordSystemActivity(type: 'INFO' | 'WARNING' | 'SUCCESS' | 'SYSTEM', message: string, entityId?: string) {
+  try {
+    await prisma.activityLog.create({
+      data: { type, message, entityId }
+    });
+  } catch (e) {
+    console.error('Failed to record activity:', e);
+  }
+}
+
 export async function createWorkOrder(formData: FormData) {
   const customerName = formData.get('customerName') as string;
   const customerContact = formData.get('customerContact') as string;
@@ -54,6 +65,7 @@ export async function createWorkOrder(formData: FormData) {
   });
 
   await logActivity(workOrder.id, 'Munkalap létrehozva.');
+  await recordSystemActivity('SUCCESS', `Új munkalap rögzítve: ${deviceType} (${customerName})`, workOrder.id);
   await triggerUpdate();
   const redirect = (await import('next/navigation')).redirect;
   redirect(`/t/${workOrder.id}`);
@@ -63,7 +75,7 @@ export async function getSettings() {
   let settings = await prisma.settings.findFirst({ where: { id: 1 } });
   if (!settings) {
     settings = await prisma.settings.create({
-      data: { id: 1, baseUrl: 'http://localhost:3000', workshopName: 'Szerviz Központ' }
+      data: { id: 1, baseUrl: 'http://localhost:3000', workshopName: 'Cellnet Kft. Szerviz' }
     });
   }
   return settings;

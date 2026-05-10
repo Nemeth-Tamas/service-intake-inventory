@@ -1,9 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { Plus, ListChecks, ArrowRight, Settings as SettingsIcon, AlertCircle, Clock } from 'lucide-react';
+import { Plus, ListChecks, ArrowRight, Settings as SettingsIcon, AlertCircle, Clock, LayoutPanelLeft, Activity } from 'lucide-react';
 import DashboardFilters from '@/components/DashboardFilters';
 import DashboardStats from '@/components/DashboardStats';
 import RealTimeListener from '@/components/RealTimeListener';
+import DashboardQRTrigger from '@/components/DashboardQRTrigger';
 import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export default async function Home({
   
   if (currentTab === 'archive') {
     where.status = 'Kiadva';
-  } else {
+  } else if (currentTab === 'bench') {
     where.NOT = { status: 'Kiadva' };
   }
 
@@ -41,13 +42,18 @@ export default async function Home({
     ];
   }
 
-  const workOrders = await prisma.workOrder.findMany({
+  const workOrders = currentTab !== 'logs' ? await prisma.workOrder.findMany({
     where,
     orderBy: [
       { priority: 'desc' },
       { createdAt: 'desc' },
     ],
-  });
+  }) : [];
+
+  const activityLogs = currentTab === 'logs' ? await prisma.activityLog.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 50
+  }) : [];
 
   const priorityColors: Record<string, string> = {
     'Sürgős': 'text-red-600 bg-red-50 border-red-100',
@@ -57,95 +63,188 @@ export default async function Home({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10">
       <RealTimeListener event="dashboard" />
       
-      <header className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-gray-900">Szerviz Kezelő</h1>
-            <p className="text-gray-500">Beszállítások és nyilvántartás</p>
+      <header className="relative overflow-hidden bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl shadow-blue-500/5 border border-white/20">
+        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="relative flex flex-col sm:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-5">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 rounded-2xl shadow-lg shadow-blue-200">
+              <LayoutPanelLeft className="text-white" size={32} />
+            </div>
+            <div>
+              <h1 className="text-4xl font-black text-gray-900 tracking-tight">Szerviz Kezelő</h1>
+              <p className="text-gray-500 font-medium mt-0.5">Professzionális munkalap nyilvántartás</p>
+            </div>
           </div>
-          <Link href="/settings" className="p-2 text-gray-400 hover:text-blue-600 transition">
-            <SettingsIcon size={24} />
-          </Link>
+          
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <DashboardQRTrigger />
+            <Link 
+              href="/settings" 
+              className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl border border-gray-100 bg-white"
+            >
+              <SettingsIcon size={24} />
+            </Link>
+            <Link 
+              href="/new" 
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-2xl font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-200"
+            >
+              <Plus size={20} strokeWidth={3} /> Új Beszállítás
+            </Link>
+          </div>
         </div>
-        <Link 
-          href="/new" 
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200"
-        >
-          <Plus size={20} /> Új Beszállítás
-        </Link>
       </header>
 
-      <Suspense fallback={<div className="h-24 bg-gray-100 animate-pulse rounded-2xl" />}>
-        <DashboardStats currentTab={currentTab} />
-      </Suspense>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <aside className="lg:col-span-1 space-y-8">
+          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-3xl" />}>
+            <DashboardStats currentTab={currentTab} />
+          </Suspense>
+        </aside>
 
-      <Suspense fallback={<div>Betöltés...</div>}>
-        <DashboardFilters />
-      </Suspense>
+        <main className="lg:col-span-3 space-y-6">
+          {currentTab !== 'logs' ? (
+            <>
+              <Suspense fallback={<div className="h-20 bg-gray-100 animate-pulse rounded-2xl" />}>
+                <DashboardFilters />
+              </Suspense>
 
-      <section className="space-y-4">
-        <h2 className="flex items-center gap-2 font-bold text-xl text-gray-800">
-          <ListChecks size={24} /> {currentTab === 'archive' ? 'Archivált Munkalapok' : 'Aktív Munkalapok'} {workOrders.length > 0 && `(${workOrders.length})`}
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {workOrders.map((wo) => (
-            <Link 
-              key={wo.id} 
-              href={`/t/${wo.id}`}
-              className={`group bg-white border p-5 rounded-xl shadow-sm hover:border-blue-300 hover:shadow-md transition flex flex-col justify-between ${wo.priority === 'Sürgős' ? 'border-l-4 border-l-red-500' : ''}`}
-            >
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[10px] font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-600 uppercase">
-                    {wo.id.slice(-6)}
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${priorityColors[wo.priority] || priorityColors['Normál']}`}>
-                    {wo.priority}
-                  </span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                    wo.status === 'Kész / Átvehető' 
-                      ? 'bg-green-50 text-green-700 border-green-100' 
-                      : wo.status === 'Javíthatatlan'
-                      ? 'bg-red-50 text-red-700 border-red-100'
-                      : 'bg-blue-50 text-blue-700 border-blue-100'
-                  }`}>
-                    {wo.status}
-                  </span>
+              <section className="space-y-6">
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="flex items-center gap-3 font-extrabold text-2xl text-gray-800">
+                    <ListChecks className="text-blue-500" size={28} /> 
+                    {currentTab === 'archive' ? 'Archivált Munkalapok' : 'Aktív Munkalapok'}
+                    <span className="text-sm font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full ml-2">
+                      {workOrders.length}
+                    </span>
+                  </h2>
                 </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors line-clamp-1">{wo.deviceType || 'Ismeretlen eszköz'}</h3>
-                  <p className="text-sm text-gray-500 line-clamp-1 mt-1 font-medium">{wo.customerName || 'Névtelen ügyfél'}</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+                  {workOrders.map((wo) => (
+                    <Link 
+                      key={wo.id} 
+                      href={`/t/${wo.id}`}
+                      className={`group bg-white border border-gray-100 p-6 rounded-3xl shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden ${
+                        wo.priority === 'Sürgős' ? 'ring-2 ring-red-500/10' : ''
+                      }`}
+                    >
+                      {wo.priority === 'Sürgős' && (
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -mr-12 -mt-12 pointer-events-none" />
+                      )}
+                      
+                      <div className="space-y-4 relative">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-[10px] font-black bg-gray-100 px-2.5 py-1 rounded-lg text-gray-500 uppercase tracking-widest">
+                            #{wo.id.slice(-6)}
+                          </span>
+                          <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase tracking-wider ${priorityColors[wo.priority] || priorityColors['Normál']}`}>
+                            {wo.priority}
+                          </span>
+                          <span className={`text-[10px] font-bold px-3 py-1 rounded-lg border uppercase tracking-wider ${
+                            wo.status === 'Kész / Átvehető' 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                              : wo.status === 'Javíthatatlan'
+                              ? 'bg-rose-50 text-rose-700 border-rose-100'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                          }`}>
+                            {wo.status}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="font-black text-gray-900 text-xl leading-tight group-hover:text-blue-600 transition-colors line-clamp-1">
+                            {wo.deviceType || 'Ismeretlen eszköz'}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
+                              {wo.customerName ? wo.customerName[0].toUpperCase() : '?'}
+                            </div>
+                            <p className="text-sm text-gray-600 font-semibold truncate">
+                              {wo.customerName || 'Névtelen ügyfél'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 pt-5 border-t border-gray-50 flex items-center justify-between">
+                        <div className="space-y-1.5">
+                           {wo.estimatedDone && (
+                             <div className="bg-orange-50 text-orange-700 text-[11px] font-bold px-2 py-1 rounded-md flex items-center gap-1.5 w-fit">
+                               <Clock size={12} strokeWidth={3} /> {wo.estimatedDone.toLocaleDateString('hu-HU')}
+                             </div>
+                           )}
+                           <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium ml-1">
+                             <Clock size={12} /> {wo.createdAt.toLocaleDateString('hu-HU')}
+                           </div>
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded-2xl group-hover:bg-blue-600 transition-all duration-300">
+                          <ArrowRight className="text-blue-600 group-hover:text-white" size={20} />
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  
+                  {workOrders.length === 0 && (
+                    <div className="col-span-full text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-100 shadow-inner">
+                      <div className="inline-flex p-5 bg-gray-50 rounded-full mb-4">
+                        <ListChecks className="text-gray-300" size={48} />
+                      </div>
+                      <p className="text-gray-400 font-bold text-lg">Nincsenek rögzített munkalapok.</p>
+                      <p className="text-gray-400 text-sm mt-1">Kezd el a munkát egy új beszállítás rögzítésével!</p>
+                      <Link href="/new" className="text-blue-600 font-black mt-6 inline-block hover:underline px-6 py-3 bg-blue-50 rounded-2xl">
+                        Első Munkalap Létrehozása
+                      </Link>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </section>
+            </>
+          ) : (
+            <section className="space-y-6">
+              <h2 className="flex items-center gap-3 font-extrabold text-2xl text-gray-800 px-2">
+                <Activity className="text-blue-500" size={28} /> Rendszernapló
+              </h2>
               
-              <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                <div className="space-y-1">
-                   {wo.estimatedDone && (
-                     <p className="text-[11px] text-orange-600 flex items-center gap-1 font-bold">
-                       <Clock size={12} /> {wo.estimatedDone.toLocaleDateString('hu-HU')}
-                     </p>
-                   )}
-                   <p className="text-[11px] text-gray-400 font-medium">Létrehozva: {wo.createdAt.toLocaleDateString('hu-HU')}</p>
-                </div>
-                <div className="bg-gray-50 p-2 rounded-lg group-hover:bg-blue-50 transition-colors">
-                  <ArrowRight className="text-gray-400 group-hover:text-blue-500" size={18} />
+              <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+                <div className="divide-y divide-gray-50">
+                  {activityLogs.map((log) => (
+                    <div key={log.id} className="p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors">
+                      <div className={`p-2.5 rounded-xl ${
+                        log.type === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600' :
+                        log.type === 'WARNING' ? 'bg-rose-50 text-rose-600' :
+                        'bg-blue-50 text-blue-600'
+                      }`}>
+                        <Activity size={18} strokeWidth={3} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-900 font-bold leading-snug">{log.message}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-400 font-medium">{log.createdAt.toLocaleString('hu-HU')}</p>
+                          {log.entityId && (
+                            <Link href={`/t/${log.entityId}`} className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline">
+                              Munkalap Megnyitása
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {activityLogs.length === 0 && (
+                    <div className="p-20 text-center">
+                      <p className="text-gray-400 font-bold">Még nincsenek naplózott események.</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </Link>
-          ))}
-          
-          {workOrders.length === 0 && (
-            <div className="col-span-full text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-              <p className="text-gray-400 font-medium">Még nincs rögzített munkalap.</p>
-              <Link href="/new" className="text-blue-500 font-bold mt-2 inline-block hover:underline">Hozd létre az elsőt!</Link>
-            </div>
+            </section>
           )}
-        </div>
-      </section>
+        </main>
+      </div>
     </div>
   );
 }
