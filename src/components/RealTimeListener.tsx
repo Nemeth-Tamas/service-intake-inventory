@@ -13,13 +13,22 @@ export default function RealTimeListener({ event }: { event: string }) {
 
     eventSource.onmessage = (e) => {
       try {
+        if (!e.data || e.data === 'heartbeat') return;
+        
         const data = JSON.parse(e.data);
-        if (data.event === event || data.event === 'dashboard') {
-          console.log('Real-time update received via SSE:', data.event);
+        console.log('SSE Received:', data);
+
+        // React if it's the dashboard event or matches our specific work order
+        const isMatch = data.event === 'dashboard' || 
+                        data.event === event || 
+                        (data.event && data.event.includes(event));
+
+        if (isMatch) {
+          console.log('Match found! Refreshing...');
           router.refresh();
         }
       } catch (err) {
-        // ignore parse errors (like heartbeats)
+        // Heartbeats or malformed data - ignore
       }
     };
 
