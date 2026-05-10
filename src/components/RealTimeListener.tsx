@@ -17,8 +17,10 @@ export default function RealTimeListener({ event }: { event: string }) {
       : window.location.origin; // In production/proxy, it's usually the same domain
 
     const socket = io(socketUrl, {
-      path: '/socket.io', // Standard path
-      transports: ['websocket', 'polling']
+      path: '/socket.io',
+      transports: ['websocket'], // Force WebSocket, skip polling to avoid 400 Bad Request
+      secure: window.location.protocol === 'https:',
+      rejectUnauthorized: false // Useful for self-signed or local certificates
     });
 
     socket.on(event, () => {
