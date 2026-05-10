@@ -16,7 +16,8 @@ export default async function LoginPage({
       await signIn("credentials", formData);
     } catch (error) {
       if (error instanceof AuthError) {
-        return redirect("/login?error=Invalid credentials");
+        // Simple relative redirect is safest behind proxies
+        return redirect("/login?error=1");
       }
       throw error;
     }
