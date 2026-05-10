@@ -4,9 +4,11 @@ const Redis = require("ioredis");
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
+  allowEIO3: true, // Compatibility for older clients
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: true, // Reflect the request origin
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
