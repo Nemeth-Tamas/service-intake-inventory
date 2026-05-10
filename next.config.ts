@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
+      allowedOrigins: ['service.ntsexp.site', 'service.ntsexp.local'],
     },
   },
   outputFileTracingRoot: __dirname,

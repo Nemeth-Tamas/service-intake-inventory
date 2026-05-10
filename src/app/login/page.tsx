@@ -13,12 +13,15 @@ export default async function LoginPage({
   async function loginAction(formData: FormData) {
     "use server";
     try {
-      await signIn("credentials", formData);
+      await signIn("credentials", {
+        ...Object.fromEntries(formData),
+        redirectTo: "/",
+      });
     } catch (error) {
       if (error instanceof AuthError) {
-        // Simple relative redirect is safest behind proxies
         return redirect("/login?error=1");
       }
+      // Rethrow the error so Next.js can handle the redirect thrown by next-auth success
       throw error;
     }
   }
