@@ -9,6 +9,22 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
 
+  async function loginAction(formData: FormData) {
+    "use server";
+    try {
+      await signIn("credentials", formData);
+    } catch (error) {
+      if (error instanceof AuthError) {
+        const authUrl = process.env.AUTH_URL || "http://localhost:3000";
+        // Use a simple redirect string to avoid Type mismatches in the action prop
+        const redirectUrl = `${authUrl}/login?error=Invalid credentials`;
+        const { redirect } = await import("next/navigation");
+        redirect(redirectUrl);
+      }
+      throw error;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -27,20 +43,7 @@ export default async function LoginPage({
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-10 px-4 shadow-2xl shadow-blue-500/5 sm:rounded-[2.5rem] sm:px-12 border border-gray-100">
-          <form
-            action={async (formData) => {
-              "use server";
-              try {
-                await signIn("credentials", formData);
-              } catch (error) {
-                if (error instanceof AuthError) {
-                  return Response.redirect(new URL("/login?error=Invalid credentials", process.env.AUTH_URL || "http://localhost:3000"));
-                }
-                throw error;
-              }
-            }}
-            className="space-y-6"
-          >
+          <form action={loginAction} className="space-y-6">
             {error && (
               <div className="bg-rose-50 border border-rose-100 text-rose-600 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-bold animate-shake">
                 <AlertCircle size={18} strokeWidth={3} />
