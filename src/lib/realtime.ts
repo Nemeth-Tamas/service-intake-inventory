@@ -38,14 +38,20 @@ export const redis = getRedis();
 
 export async function publishUpdate(event: string, payload: any = {}) {
   const client = getRedis();
-  if (!client) return;
+  if (!client) {
+    console.error('SSE: Cannot publish, Redis client not initialized.');
+    return;
+  }
 
   try {
+    const message = JSON.stringify({ event, payload });
+    console.log(`SSE: Publishing event "${event}" to Redis updates channel`);
+    
     // Only attempt to publish if the client thinks it's connected
-    if (client.status === 'ready') {
-      await client.publish('updates', JSON.stringify({ event, payload }));
-    }
+    // Use the raw client if ready, or try to connect
+    await client.publish('updates', message);
+    console.log('SSE: Successfully published to Redis');
   } catch (e) {
-    // Fail silently, app should remain functional
+    console.error('SSE: Redis publish error:', e);
   }
 }
