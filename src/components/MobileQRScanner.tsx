@@ -124,34 +124,61 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
         #qr-reader {
           border: none !important;
           background: black !important;
+          width: 100% !important;
         }
-        /* Hide all library UI elements */
-        #qr-reader__status_span,
-        #qr-reader__dashboard_section,
-        #qr-reader img[alt="Camera"],
-        #qr-reader__header_message {
+        /* Show essential library UI elements for configuration */
+        #qr-reader__status_span {
           display: none !important;
         }
-        #qr-reader__camera_selection {
-          background: white;
-          border-radius: 8px;
-          padding: 4px;
-          margin-bottom: 10px;
+        #qr-reader__dashboard_section {
+          padding: 20px !important;
+          background: rgba(0,0,0,0.5) !important;
+          color: white !important;
+          position: absolute !important;
+          bottom: 120px !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 120 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 10px !important;
         }
-        /* Allow the permission button to be visible if needed */
+        #qr-reader__camera_selection {
+          background: white !important;
+          border-radius: 12px !important;
+          padding: 10px !important;
+          width: 100% !important;
+          max-width: 300px !important;
+          color: black !important;
+          font-weight: bold !important;
+        }
         #qr-reader__dashboard_section_csr button {
-          background: #2563eb;
-          color: white;
-          padding: 10px 20px;
-          border-radius: 12px;
-          font-weight: bold;
-          border: none;
-          margin: 10px;
+          background: #2563eb !important;
+          color: white !important;
+          padding: 12px 24px !important;
+          border-radius: 16px !important;
+          font-weight: 800 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1px !important;
+          border: none !important;
+          box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4) !important;
+        }
+        #qr-reader img[alt="Camera"] {
+          display: none !important;
+        }
+        #qr-reader__header_message {
+          color: #9ca3af !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
         }
         #qr-reader__scan_region {
-           display: flex;
-           justify-content: center;
-           align-items: center;
+           display: flex !important;
+           justify-content: center !important;
+           align-items: center !important;
+        }
+        #qr-reader video {
+          object-fit: cover !important;
         }
       `}</style>
     </div>,
