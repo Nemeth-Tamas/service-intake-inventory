@@ -97,30 +97,9 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
           id="qr-reader" 
           className="w-full h-full [&_video]:w-full [&_video]:h-full [&_video]:object-cover" 
         />
-        
-        {/* Overlay Frame UI */}
-        <div id="qr-overlay" className="absolute inset-0 pointer-events-none flex items-center justify-center transition-colors duration-300">
-          <div className="w-64 h-64 border-2 border-white/20 rounded-[3rem] relative bg-blue-500/5 shadow-[0_0_0_100vmax_rgba(0,0,0,0.6)]">
-            {/* Corner Accents */}
-            <div className="absolute -top-1 -left-1 w-12 h-12 border-t-8 border-l-4 border-blue-500 rounded-tl-3xl" />
-            <div className="absolute -top-1 -right-1 w-12 h-12 border-t-8 border-r-4 border-blue-500 rounded-tr-3xl" />
-            <div className="absolute -bottom-1 -left-1 w-12 h-12 border-b-8 border-l-4 border-blue-500 rounded-bl-3xl" />
-            <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-8 border-r-4 border-blue-500 rounded-br-3xl" />
-            
-            {/* Scanning Line Animation */}
-            <div className="absolute inset-x-6 top-1/2 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_20px_rgba(96,165,250,0.8)] animate-scanner-line" />
-          </div>
-        </div>
       </div>
 
       <style jsx global>{`
-        @keyframes scanner-line {
-          0%, 100% { transform: translateY(-100px); opacity: 0; }
-          50% { transform: translateY(100px); opacity: 1; }
-        }
-        .animate-scanner-line {
-          animation: scanner-line 2.5s ease-in-out infinite;
-        }
         #qr-reader {
           border: none !important;
           background: black !important;
@@ -132,10 +111,10 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
         }
         #qr-reader__dashboard_section {
           padding: 20px !important;
-          background: rgba(0,0,0,0.5) !important;
+          background: rgba(0,0,0,0.7) !important;
           color: white !important;
           position: absolute !important;
-          bottom: 120px !important;
+          bottom: 40px !important;
           left: 0 !important;
           right: 0 !important;
           z-index: 120 !important;
@@ -177,8 +156,13 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
            justify-content: center !important;
            align-items: center !important;
         }
-        #qr-reader video {
+        /* Style the built-in scanner region to look better */
+        #qr-reader__scan_region video {
           object-fit: cover !important;
+        }
+        /* Ensure the library's own box is professional */
+        #qr-canvas {
+          display: none !important;
         }
       `}</style>
     </div>,
