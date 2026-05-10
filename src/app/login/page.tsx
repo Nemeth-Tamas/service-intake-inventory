@@ -1,6 +1,7 @@
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { KeyRound, User, AlertCircle } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export default async function LoginPage({
   searchParams,
@@ -15,11 +16,7 @@ export default async function LoginPage({
       await signIn("credentials", formData);
     } catch (error) {
       if (error instanceof AuthError) {
-        const authUrl = process.env.AUTH_URL || "http://localhost:3000";
-        // Use a simple redirect string to avoid Type mismatches in the action prop
-        const redirectUrl = `${authUrl}/login?error=Invalid credentials`;
-        const { redirect } = await import("next/navigation");
-        redirect(redirectUrl);
+        return redirect("/login?error=Invalid credentials");
       }
       throw error;
     }
@@ -113,3 +110,4 @@ export default async function LoginPage({
     </div>
   );
 }
+
