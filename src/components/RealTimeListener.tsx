@@ -1,35 +1,34 @@
 'use client';
 
 import { useEffect } from 'react';
-import { io } from 'socket.io-client';
 import { useRouter } from 'next/navigation';
 
 export default function RealTimeListener({ event }: { event: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    // If we are on a custom domain without a port (like service.ntsexp.local),
-    // we should connect to the same origin. 
-    // If we are on a specific IP/localhost with port 3000, we use 3001.
-    const isStandardPort = window.location.port === '3000' || window.location.port === '';
-    const socketUrl = window.location.port === '3000' 
-      ? `${window.location.protocol}//${window.location.hostname}:3001`
-      : window.location.origin; // In production/proxy, it's usually the same domain
+    // Use standard HTTP Server Sent Events (SSE) instead of WebSockets
+    // This is much more reliable behind proxies and Cloudflare
+    const eventSource = new EventSource('/api/realtime');
 
-    const socket = io(socketUrl, {
-      path: '/socket.io',
-      transports: ['websocket'], // Force WebSocket, skip polling to avoid 400 Bad Request
-      secure: window.location.protocol === 'https:',
-      rejectUnauthorized: false // Useful for self-signed or local certificates
-    });
+    eventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event === event || data.event === 'dashboard') {
+          console.log('Real-time update received via SSE:', data.event);
+          router.refresh();
+        }
+      } catch (err) {
+        // ignore parse errors (like heartbeats)
+      }
+    };
 
-    socket.on(event, () => {
-      console.log('Real-time update received:', event);
-      router.refresh();
-    });
+    eventSource.onerror = (err) => {
+      console.warn('SSE connection lost, retrying...');
+    };
 
     return () => {
-      socket.disconnect();
+      eventSource.close();
     };
   }, [event, router]);
 
