@@ -21,8 +21,8 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
         scannerRef.current = scanner;
 
         const config = { 
-          fps: 10, 
-          qrbox: { width: 250, height: 250 },
+          fps: 20, // Increased FPS for faster detection
+          qrbox: { width: 300, height: 300 }, // Larger scanning area
           aspectRatio: window.innerHeight / window.innerWidth
         };
 
@@ -30,6 +30,11 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
           { facingMode: "environment" },
           config,
           (decodedText) => {
+            // Haptic feedback if supported
+            if (window.navigator.vibrate) {
+              window.navigator.vibrate(100);
+            }
+            
             let id = decodedText;
             if (decodedText.includes('/t/')) {
               id = decodedText.split('/t/').pop()?.split('?')[0] || decodedText;
@@ -37,6 +42,10 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
                id = decodedText.split('/status/').pop()?.split('?')[0] || decodedText;
             }
             
+            // Visual feedback - flash the screen green briefly
+            const overlay = document.getElementById('qr-overlay');
+            if (overlay) overlay.style.backgroundColor = 'rgba(34, 197, 94, 0.3)';
+
             scanner.stop().then(() => {
               router.push(`/t/${id}`);
               onClose();
@@ -96,8 +105,8 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
         />
         
         {/* Overlay Frame UI */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-72 h-72 border-2 border-white/10 rounded-[3rem] relative bg-blue-500/5">
+        <div id="qr-overlay" className="absolute inset-0 pointer-events-none flex items-center justify-center transition-colors duration-300">
+          <div className="w-72 h-72 border-2 border-white/10 rounded-[3rem] relative bg-blue-500/5 shadow-[0_0_0_100vmax_rgba(0,0,0,0.5)]">
             {/* Corner Accents */}
             <div className="absolute -top-1 -left-1 w-12 h-12 border-t-8 border-l-4 border-blue-500 rounded-tl-3xl" />
             <div className="absolute -top-1 -right-1 w-12 h-12 border-t-8 border-r-4 border-blue-500 rounded-tr-3xl" />
