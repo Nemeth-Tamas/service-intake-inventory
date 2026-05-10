@@ -1,37 +1,38 @@
-# GEMINI.md
+# GEMINI.md (V2.0 Upgraded)
 
 ## Project Overview
-`serviceapp` (Szerviz-Beszállítás) is a professional, self-hosted service management system. It enables technicians to manage device intakes, track repair progress with real-time updates, document work with photos (including automatic iPhone HEIC conversion), and generate professional, branded PDF reports.
+`serviceapp` (Cellnet Kft. Szerviz) is a professional, self-hosted service management system. It enables technicians to manage device intakes, track repair progress with real-time updates, and provide customers with a secure status tracking portal.
 
-## Core Features
-*   **Real-Time Sync:** Uses a self-hosted Redis + Socket.io stack for instant updates across devices.
-*   **Mobile Optimized:** Floating camera shortcuts and high-scannability QR codes for workshop floor use.
-*   **Branding:** Custom workshop logo, name, and technician name configurable in Settings.
-*   **Financials:** Track parts and labor costs with automatic total calculation.
-*   **Audit Log:** Automated system notes [RENDSZER] for every status, priority, or field change.
-*   **Device History:** Automatic lookup of previous repairs based on Serial Number.
-*   **Maintenance:** Automated image purging for closed jobs (>30 days) with PDF archiving.
+## Core Features (V2.0)
+*   **Real-Time Sync (SSE):** Uses Server-Sent Events over standard HTTPS for instant updates, ensuring high compatibility with Cloudflare and reverse proxies.
+*   **Secure Access:** Protected by a single-technician account (NextAuth v5) defined via environment variables (`AUTH_USER`, `AUTH_PASS`).
+*   **PWA & QR Scanner:** Installable mobile app with an integrated, full-screen QR scanner for instant work order navigation.
+*   **Customer Portal:** Public, read-only status tracking at `/status/[id]` supporting both full CUIDs and 6-character short IDs.
+*   **Professional Branding:** Custom workshop identity (Cellnet Kft. Szerviz) integrated into the UI and PDF reports.
+*   **Activity Audit Log:** Persistent Rendszernapló (System Log) tracking every workshop action chronologically.
+*   **Performance:** Automatic image optimization to WebP (using `sharp`) for reduced storage and faster loading.
 
 ## Architecture
 *   **Frontend/Backend:** Next.js 16 (App Router)
 *   **Database:** Prisma ORM with SQLite (Persistent volume in Docker)
-*   **Real-time:** Socket.io server (port 3001) + Redis (internal broker)
-*   **Image Processing:** `heic-convert` for iPhone compatibility, `sharp` for optimization.
-*   **PDF Engine:** High-quality `html2canvas` + `jsPDF` slicing for zero-empty-page reports.
+*   **Real-time:** SSE stream (`/api/realtime`) + Redis (internal broker)
+*   **Image Processing:** `sharp` for WebP optimization and resizing.
 
-## Environment Variables (Docker)
-*   `DATABASE_URL`: Standard format `file:///app/prisma/data/dev.db`
+## Environment Variables (V2.0)
+*   `AUTH_SECRET`: Random string for session encryption.
+*   `AUTH_USER` / `AUTH_PASS`: Single account credentials.
+*   `AUTH_URL`: Public HTTPS URL for correct redirects.
+*   `DATABASE_URL`: `file:///app/prisma/data/dev.db`
 *   `REDIS_URL`: `redis://redis:6379`
-*   `NODE_ENV`: `production`
 
-## Deployment & Maintenance
-*   **Start Stack:** `docker compose up -d --build`
-*   **Backup:** One-click download of `dev.db` via `/api/backup`.
-*   **Host Permissions:** Ensure `sudo chown -R 1001:1001 ./prisma/data ./public/uploads ./public/archives`.
-*   **Language:** Full Hungarian UI and PDF support with character normalization (Ő/ű -> Ö/ü).
+## Deployment & Proxy
+*   **Rebuild:** `docker compose up -d --build` (uses `--legacy-peer-deps` in Dockerfile).
+*   **Proxy Config:** Route standard traffic to port 3000. No special WebSocket configuration needed thanks to SSE.
+*   **Permissions:** Crucial for Linux hosts: `sudo chown -R 1001:1001 ./prisma/data ./public/uploads ./public/archives`.
+*   **Git Policy:** Database files and media uploads are ignored via `.gitignore` to prevent deployment conflicts.
 
 ## Key Files
-*   `prisma/schema.prisma`: Database definition (includes WorkOrder, Note, Photo, LineItem, StatusLog, Settings).
-*   `socket-server.js`: Lightweight real-time broadcaster.
-*   `src/lib/actions.ts`: Core business logic and system logging.
-*   `docker-compose.yml`: Multi-container orchestration (App, Socket, Redis).
+*   `src/auth.ts`: Authentication configuration.
+*   `src/middleware.ts`: Global route protection.
+*   `src/app/api/realtime/route.ts`: SSE stream implementation.
+*   `src/components/MobileQRScanner.tsx`: Full-screen camera scanner (using React Portal).
