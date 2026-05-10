@@ -20,18 +20,6 @@ services:
       - redis
     restart: always
 
-  socket:
-    build: .
-    container_name: service-socket
-    command: node socket-server.js
-    ports:
-      - "3001:3001"
-    environment:
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
-    restart: always
-
   redis:
     image: redis:alpine
     container_name: service-redis
