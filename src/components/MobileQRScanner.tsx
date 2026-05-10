@@ -20,20 +20,28 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
         const scanner = new Html5Qrcode("qr-reader");
         scannerRef.current = scanner;
 
+        // Dynamic qrbox - 70% of the smallest dimension
+        const qrboxFunction = (viewfinderWidth: number, viewFinderHeight: number) => {
+          let minEdge = Math.min(viewfinderWidth, viewFinderHeight);
+          let qrboxSize = Math.floor(minEdge * 0.7);
+          return {
+            width: qrboxSize,
+            height: qrboxSize
+          };
+        };
+
         const config = { 
-          fps: 20, // Increased FPS for faster detection
-          qrbox: { width: 300, height: 300 }, // Larger scanning area
-          aspectRatio: window.innerHeight / window.innerWidth
+          fps: 10,
+          qrbox: qrboxFunction,
+          // Remove strict aspectRatio as it can cause initialization failures on some devices
         };
 
         await scanner.start(
           { facingMode: "environment" },
           config,
           (decodedText) => {
-            // Haptic feedback if supported
-            if (window.navigator.vibrate) {
-              window.navigator.vibrate(100);
-            }
+            console.log("QR Decoded:", decodedText);
+            if (window.navigator.vibrate) window.navigator.vibrate(100);
             
             let id = decodedText;
             if (decodedText.includes('/t/')) {
@@ -42,17 +50,16 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
                id = decodedText.split('/status/').pop()?.split('?')[0] || decodedText;
             }
             
-            // Visual feedback - flash the screen green briefly
             const overlay = document.getElementById('qr-overlay');
-            if (overlay) overlay.style.backgroundColor = 'rgba(34, 197, 94, 0.3)';
+            if (overlay) overlay.style.backgroundColor = 'rgba(34, 197, 94, 0.4)';
 
-            scanner.stop().then(() => {
-              router.push(`/t/${id}`);
-              onClose();
-            }).catch(() => {
-              router.push(`/t/${id}`);
-              onClose();
-            });
+            // Small delay so user sees the "success" flash
+            setTimeout(() => {
+              scanner.stop().finally(() => {
+                router.push(`/t/${id}`);
+                onClose();
+              });
+            }, 300);
           },
           undefined
         );
