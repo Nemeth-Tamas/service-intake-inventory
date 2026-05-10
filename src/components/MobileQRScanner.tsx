@@ -14,53 +14,58 @@ export default function MobileQRScanner({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     setMounted(true);
     
-    // We use the high-level scanner because it's much more reliable at 
-    // managing the camera lifecycle and autofocus across different devices.
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 },
-        // Important: this manages the start/stop state internally
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [0] // Html5QrcodeScanType.SCAN_TYPE_CAMERA
-      },
-      /* verbose= */ false
-    );
-
-    const onScanSuccess = (decodedText: string) => {
-      if (window.navigator.vibrate) window.navigator.vibrate(100);
-      
-      let id = decodedText;
-      if (decodedText.includes('/t/')) {
-        id = decodedText.split('/t/').pop()?.split('?')[0] || decodedText;
-      } else if (decodedText.includes('/status/')) {
-         id = decodedText.split('/status/').pop()?.split('?')[0] || decodedText;
+    const startScanner = () => {
+      const targetElement = document.getElementById("qr-reader");
+      if (!targetElement) {
+        console.warn("QR Reader element not found, retrying...");
+        return;
       }
-      
-      // Visual feedback
-      const overlay = document.getElementById('qr-overlay');
-      if (overlay) overlay.style.backgroundColor = 'rgba(34, 197, 94, 0.4)';
 
-      scanner.clear().then(() => {
-        router.push(`/t/${id}`);
-        onClose();
-      }).catch(() => {
-        router.push(`/t/${id}`);
-        onClose();
-      });
+      // We use the high-level scanner because it's much more reliable
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 },
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [0]
+        },
+        false
+      );
+
+      const onScanSuccess = (decodedText: string) => {
+        if (window.navigator.vibrate) window.navigator.vibrate(100);
+        let id = decodedText;
+        if (decodedText.includes('/t/')) id = decodedText.split('/t/').pop()?.split('?')[0] || decodedText;
+        else if (decodedText.includes('/status/')) id = decodedText.split('/status/').pop()?.split('?')[0] || decodedText;
+        
+        const overlay = document.getElementById('qr-overlay');
+        if (overlay) overlay.style.backgroundColor = 'rgba(34, 197, 94, 0.4)';
+
+        scanner.clear().then(() => {
+          router.push(`/t/${id}`);
+          onClose();
+        }).catch(() => {
+          router.push(`/t/${id}`);
+          onClose();
+        });
+      };
+
+      scanner.render(onScanSuccess, () => {});
+      return scanner;
     };
 
-    // Render the scanner
-    // The delay ensures the element is in the DOM
-    setTimeout(() => {
-      scanner.render(onScanSuccess, (err) => {
-        // Silently handle scan errors
-      });
-    }, 300);
+    let activeScanner: any = null;
+    // Delay to ensure the portal is rendered
+    const timer = setTimeout(() => {
+      activeScanner = startScanner();
+    }, 500);
 
     return () => {
-      scanner.clear().catch(e => console.error("Scanner clear error", e));
+      clearTimeout(timer);
+      if (activeScanner) {
+        activeScanner.clear().catch((e: any) => console.error("Scanner clear error", e));
+      }
     };
   }, [router, onClose]);
 
