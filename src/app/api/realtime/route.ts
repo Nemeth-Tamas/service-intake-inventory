@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { redis } from '@/lib/realtime';
+import Redis from 'ioredis';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,9 +8,6 @@ export async function GET(req: NextRequest) {
   const writer = responseStream.writable.getWriter();
   const encoder = new TextEncoder();
 
-  // Create a listener on the Redis 'updates' channel
-  // We need a fresh connection for every stream
-  const Redis = require('ioredis');
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
   const sub = new Redis(redisUrl);
 
@@ -19,14 +16,14 @@ export async function GET(req: NextRequest) {
     try { writer.close(); } catch (e) {}
   };
 
-  sub.subscribe('updates', (err) => {
+  sub.subscribe('updates', (err: Error | null | undefined) => {
     if (err) {
       console.error('SSE Redis subscribe error:', err);
       cleanup();
     }
   });
 
-  sub.on('message', (channel, message) => {
+  sub.on('message', (channel: string, message: string) => {
     if (channel === 'updates') {
       try {
         writer.write(encoder.encode(`data: ${message}\n\n`));
@@ -36,7 +33,6 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  // Keep-alive heartbeats every 15 seconds to prevent proxy timeouts
   const heartbeat = setInterval(() => {
     try {
       writer.write(encoder.encode(': heartbeat\n\n'));
