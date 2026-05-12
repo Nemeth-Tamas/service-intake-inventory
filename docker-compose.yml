@@ -4,14 +4,8 @@ services:
     container_name: service-app
     ports:
       - "3000:3000"
-    environment:
-      - DATABASE_URL=file:///app/prisma/data/dev.db
-      - REDIS_URL=redis://redis:6379
-      - NODE_ENV=production
-      - AUTH_SECRET=REPLACE_WITH_LONG_RANDOM_STRING
-      - AUTH_USER=admin
-      - AUTH_PASS=admin123
-      - AUTH_URL=http://localhost:3000
+    env_file:
+      - .env
     volumes:
       - ./prisma/data:/app/prisma/data:z
       - ./public/uploads:/app/public/uploads:z
