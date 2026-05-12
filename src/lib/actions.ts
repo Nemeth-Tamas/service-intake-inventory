@@ -81,16 +81,31 @@ export async function getSettings() {
   return settings;
 }
 
-export async function updateSettings(baseUrl: string, workshopName: string, technicianName: string) {
+export async function updateSettings(baseUrl: string, workshopName: string, technicianName: string, declarationTemplate?: string) {
   await prisma.settings.update({
     where: { id: 1 },
-    data: { baseUrl, workshopName, technicianName }
+    data: {
+      baseUrl,
+      workshopName,
+      technicianName,
+      ...(declarationTemplate !== undefined ? { declarationTemplate } : {})
+    }
   });
   revalidatePath('/');
   revalidatePath('/settings');
   await triggerUpdate();
 }
 
+export async function updateRepresentativeSignature(signatureData: string | null) {
+  await prisma.settings.update({
+    where: { id: 1 },
+    data: { representativeSignature: signatureData },
+  });
+
+  revalidatePath('/settings');
+  revalidatePath('/');
+  await triggerUpdate();
+}
 export async function uploadLogo(formData: FormData) {
   const file = formData.get('file') as File;
   if (!file) return { success: false };
@@ -374,6 +389,59 @@ export async function updatePriority(workOrderId: string, priority: string) {
   await logActivity(workOrderId, `Prioritás módosítva: ${oldOrder?.priority} -> ${priority}`);
   await triggerUpdate(workOrderId);
   revalidatePath(`/t/${workOrderId}`);
+  revalidatePath('/');
+}
+
+export async function toggleSignatureQueue(workOrderId: string, status: boolean) {
+  await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: { isWaitingForSignature: status }
+  });
+
+  await logActivity(workOrderId, status ? 'Munkalap aláírásra váró sorba helyezve.' : 'Munkalap eltávolítva az aláírási sorból.');
+  await triggerUpdate(workOrderId);
+  revalidatePath(`/t/${workOrderId}`);
+  revalidatePath('/sign');
+  revalidatePath('/');
+}
+
+export async function saveSignature(workOrderId: string, signatureData: string) {
+  const settings = await getSettings();
+  
+  await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: { 
+      signatureData,
+      signedAt: new Date(),
+      isWaitingForSignature: false,
+      signedDeclarationText: settings.declarationTemplate
+    }
+  });
+
+  await logActivity(workOrderId, 'Munkalap digitálisan aláírva.');
+  await recordSystemActivity('SUCCESS', `Munkalap aláírva: ${workOrderId}`, workOrderId);
+  await triggerUpdate(workOrderId);
+  revalidatePath(`/t/${workOrderId}`);
+  revalidatePath('/sign');
+  revalidatePath('/');
+}
+
+export async function voidSignature(workOrderId: string) {
+  await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: { 
+      signatureData: null,
+      signedAt: null,
+      signedDeclarationText: null,
+      isWaitingForSignature: false
+    }
+  });
+
+  await logActivity(workOrderId, 'Aláírás érvénytelenítve.');
+  await recordSystemActivity('WARNING', `Aláírás érvénytelenítve: ${workOrderId}`, workOrderId);
+  await triggerUpdate(workOrderId);
+  revalidatePath(`/t/${workOrderId}`);
+  revalidatePath('/sign');
   revalidatePath('/');
 }
 

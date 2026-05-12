@@ -11,7 +11,7 @@ services:
       - AUTH_SECRET=REPLACE_WITH_LONG_RANDOM_STRING
       - AUTH_USER=admin
       - AUTH_PASS=admin123
-      - AUTH_URL=https://service.ntsexp.local
+      - AUTH_URL=http://localhost:3000
     volumes:
       - ./prisma/data:/app/prisma/data:z
       - ./public/uploads:/app/public/uploads:z

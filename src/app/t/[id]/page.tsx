@@ -14,9 +14,10 @@ import DeleteWorkOrder from '@/components/DeleteWorkOrder';
 import FinancialTracker from '@/components/FinancialTracker';
 import MobileQuickActions from '@/components/MobileQuickActions';
 import RealTimeListener from '@/components/RealTimeListener';
+import SignatureTrigger from '@/components/SignatureTrigger';
+import DeclarationPDFButton from '@/components/DeclarationPDFButton';
 import { addNote, getSettings } from '@/lib/actions';
-import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, AlertTriangle, FileText, History as HistoryIcon } from 'lucide-react';
-import Image from 'next/image';
+import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, FileText, PenTool } from 'lucide-react';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -182,6 +183,20 @@ export default async function TrackingPage({ params }: { params: { id: string } 
         </div>
 
         <aside className="space-y-6">
+          <section className="bg-white border p-6 rounded-2xl shadow-sm space-y-4">
+            <h2 className="flex items-center gap-2 font-bold text-lg text-gray-800 border-b pb-3">
+              <PenTool size={20} className="text-blue-500" /> Ügyfél Aláírás
+            </h2>
+            <SignatureTrigger 
+              workOrderId={workOrder.id} 
+              isWaiting={workOrder.isWaitingForSignature} 
+              hasSignature={!!workOrder.signatureData} 
+            />
+            {workOrder.signatureData && (
+              <DeclarationPDFButton workOrder={workOrder} />
+            )}
+          </section>
+
           <div className="bg-white border p-6 rounded-2xl shadow-sm flex flex-col items-center justify-center space-y-4">
             <QRCodeDisplay value={absoluteUrl} />
             <p className="text-[11px] text-gray-400 text-center leading-tight">Beolvasás az adatlaphoz<br/>bármely belső hálózati eszközről.</p>

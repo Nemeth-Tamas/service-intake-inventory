@@ -27,6 +27,12 @@ model WorkOrder {
   statusHistory   StatusLog[]
   lineItems       LineItem[]
   archivedPdfPath String?
+  
+  // Signature fields
+  isWaitingForSignature Boolean   @default(false)
+  signatureData         String?   // Base64 encoded signature image
+  signedAt              DateTime?
+  signedDeclarationText String?   // Snapshot of the declaration text at the time of signing
 }
 
 model LineItem {
@@ -39,11 +45,13 @@ model LineItem {
 }
 
 model Settings {
-  id             Int     @id @default(1)
-  baseUrl        String  @default("http://localhost:3000")
-  logoPath       String?
-  workshopName   String  @default("Szerviz Központ")
-  technicianName String?
+  id                  Int     @id @default(1)
+  baseUrl             String  @default("http://localhost:3000")
+  logoPath            String?
+  workshopName        String  @default("Szerviz Központ")
+  technicianName      String?
+  declarationTemplate String  @default("Alulírott ügyfél kijelentem, hogy a szolgáltatás megkezdése előtt tájékoztatást kaptam arról, hogy személyes adataimról biztonsági mentést kell készítenem. Az üzlet minden ésszerű lépést megtesz az adatok védelme érdekében, de nem garantálja a teljes körű helyreállítást, és nem vállal felelősséget az adatvesztésért. Hozzájárulok a készülék állapotának fotózásához és a mentett fájlok vírusellenőrzéséhez.")
+  representativeSignature String? // Base64 signature of the workshop representative
 }
 
 model StatusLog {

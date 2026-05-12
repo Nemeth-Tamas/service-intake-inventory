@@ -1,14 +1,18 @@
 'use client';
 
-import { uploadLogo, deleteLogo, runCleanup, updateSettings } from '@/lib/actions';
+import { uploadLogo, deleteLogo, runCleanup, updateSettings, updateRepresentativeSignature } from '@/lib/actions';
 import Link from 'next/link';
-import { ArrowLeft, Save, Globe, Upload, Trash2, ShieldAlert, Sparkles, RefreshCw, Database, HardDrive, UserCheck } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { ArrowLeft, Save, Globe, Upload, Trash2, ShieldAlert, Sparkles, RefreshCw, Database, HardDrive, UserCheck, PenTool, Eraser, Check } from 'lucide-react';
+import { useState, useTransition, useRef } from 'react';
 import Image from 'next/image';
+import RichTextEditor from '@/components/RichTextEditor';
+import SignaturePad from 'react-signature-canvas';
 
 export default function SettingsClient({ settings, storage }: { settings: any, storage: any }) {
   const [isPending, startTransition] = useTransition();
   const [cleanupResult, setCleanupCount] = useState<number | null>(null);
+  const [declarationTemplate, setDeclarationTemplate] = useState(settings.declarationTemplate);
+  const sigPad = useRef<SignaturePad>(null);
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -54,11 +58,13 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
             const url = fd.get('baseUrl') as string;
             const wName = fd.get('workshopName') as string;
             const tName = fd.get('technicianName') as string;
+            // The template is now handled by the React state, not the native FormData
             startTransition(async () => {
-              await updateSettings(url, wName, tName);
+              await updateSettings(url, wName, tName, declarationTemplate);
             });
           }} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ... network and workshop fields unchanged ... */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Hálózati Beállítás</h3>
                 <div>
@@ -98,6 +104,12 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Aláírási Nyilatkozat Szövege</h3>
+              <p className="text-xs text-gray-500 italic">Ez a szöveg jelenik meg az iPad-en aláírás előtt, és ez kerül a PDF mellékletre is.</p>
+              <RichTextEditor value={declarationTemplate} onChange={setDeclarationTemplate} />
             </div>
 
             <button
@@ -159,8 +171,73 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
           </div>
         </div>
 
+        {/* Representative Signature */}
+        <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-3">
+            <PenTool className="text-blue-600" /> Szerviz Képviselő Aláírása
+          </h2>
+          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+            Ez az aláírás fog megjelenni minden jegyzőkönyvön és nyilatkozaton a szerviz oldalon. Elég egyszer rögzíteni.
+          </p>
+
+          <div className="space-y-6">
+            <div className="relative h-48 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden">
+              {settings.representativeSignature ? (
+                <div className="absolute inset-0 flex items-center justify-center p-4 bg-white group">
+                  <img 
+                    src={settings.representativeSignature} 
+                    alt="Signature" 
+                    className="max-h-full max-w-full object-contain"
+                  />
+                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => updateRepresentativeSignature(null)}
+                      className="bg-red-600 text-white p-3 rounded-xl shadow-lg hover:bg-red-700 transition"
+                      title="Aláírás törlése"
+                    >
+                      <Trash2 size={24} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <SignaturePad
+                    ref={sigPad}
+                    canvasProps={{
+                      className: "w-full h-full cursor-crosshair"
+                    }}
+                  />
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
+                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Húzd ide az aláírást</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!settings.representativeSignature && (
+              <div className="flex gap-4">
+                <button
+                  onClick={() => sigPad.current?.clear()}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition"
+                >
+                  <Eraser size={18} /> Törlés
+                </button>
+                <button
+                  onClick={() => {
+                    const data = sigPad.current?.getTrimmedCanvas().toDataURL('image/png');
+                    if (data) startTransition(() => updateRepresentativeSignature(data));
+                  }}
+                  className="flex-[2] flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-100"
+                >
+                  <Check size={18} /> Aláírás Mentése
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Data & Storage Management */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
           {/* Backup */}
           <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100 space-y-6">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
