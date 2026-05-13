@@ -94,6 +94,26 @@ export default function NewWorkOrder() {
               placeholder="Karcok a fedélen, kijelző ép..."
             ></textarea>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold mb-2">Átvett Tartozékok</label>
+              <input
+                name="accessories"
+                type="text"
+                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                placeholder="Töltő, táska, egér..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">Várható Költség (Ft)</label>
+              <input
+                name="estimatedPrice"
+                type="text"
+                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                placeholder="Például: 15.000 Ft"
+              />
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-semibold mb-2">Hiba Leírása</label>
             <textarea
@@ -102,6 +122,27 @@ export default function NewWorkOrder() {
               rows={3}
               placeholder="Nem kapcsol be, hangos hűtés..."
             ></textarea>
+          </div>
+          <div className="pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700">Garancia (időtartam)</label>
+                <input
+                  name="warranty"
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="pl. 6 hónap"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700">Garancia Lejárata</label>
+                <input
+                  name="warrantyExpiry"
+                  type="date"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                />
+              </div>
+            </div>
           </div>
           <button
             type="submit"

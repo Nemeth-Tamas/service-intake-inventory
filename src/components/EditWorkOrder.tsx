@@ -78,7 +78,32 @@ export default function EditWorkOrder({ workOrder }: { workOrder: any }) {
           </div>
 
           <div className="space-y-4 pt-4 border-t">
-            <h3 className="font-bold text-blue-600 uppercase text-xs tracking-widest">Műszaki Leírás</h3>
+            <h3 className="font-bold text-blue-600 uppercase text-xs tracking-widest">Műszaki Leírás & Extrák</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Átvett Tartozékok</label>
+                <input name="accessories" defaultValue={workOrder.accessories || ''} className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Várható Költség</label>
+                <input name="estimatedPrice" defaultValue={workOrder.estimatedPrice || ''} className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Garancia (időtartam/info)</label>
+                <input name="warranty" defaultValue={workOrder.warranty || ''} placeholder="pl. 6 hónap" className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Garancia Lejárata</label>
+                <input 
+                  type="date" 
+                  name="warrantyExpiry" 
+                  defaultValue={workOrder.warrantyExpiry ? new Date(workOrder.warrantyExpiry).toISOString().split('T')[0] : ''} 
+                  className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" 
+                />
+              </div>
+            </div>
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Eszköz Állapota</label>
               <textarea name="condition" defaultValue={workOrder.condition || ''} rows={2} className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none resize-none" />

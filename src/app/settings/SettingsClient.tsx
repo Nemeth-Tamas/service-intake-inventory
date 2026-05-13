@@ -58,13 +58,18 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
             const url = fd.get('baseUrl') as string;
             const wName = fd.get('workshopName') as string;
             const tName = fd.get('technicianName') as string;
+            const address = fd.get('address') as string;
+            const phone = fd.get('phone') as string;
+            const email = fd.get('email') as string;
+            const website = fd.get('website') as string;
+            const googleReviewUrl = fd.get('googleReviewUrl') as string;
             // The template is now handled by the React state, not the native FormData
             startTransition(async () => {
-              await updateSettings(url, wName, tName, declarationTemplate);
+              await updateSettings(url, wName, tName, address, phone, email, website, googleReviewUrl, declarationTemplate);
             });
           }} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* ... network and workshop fields unchanged ... */}
+              {/* Network Settings */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Hálózati Beállítás</h3>
                 <div>
@@ -79,6 +84,7 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                 </div>
               </div>
 
+              {/* Workshop Identity */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <UserCheck size={14} /> Műhely Adatok
@@ -102,6 +108,63 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                     placeholder="Példa János"
                     className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
                   />
+                </div>
+              </div>
+
+              {/* Contact Details (New) */}
+              <div className="md:col-span-2 space-y-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Elérhetőségi Adatok (Blokkhoz)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Cím</label>
+                    <input
+                      name="address"
+                      type="text"
+                      defaultValue={settings.address || ''}
+                      placeholder="1234 Budapest, Példa utca 12."
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Telefonszám</label>
+                    <input
+                      name="phone"
+                      type="text"
+                      defaultValue={settings.phone || ''}
+                      placeholder="+36 30 123 4567"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                    <input
+                      name="email"
+                      type="email"
+                      defaultValue={settings.email || ''}
+                      placeholder="info@szerviz.hu"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Weboldal</label>
+                    <input
+                      name="website"
+                      type="text"
+                      defaultValue={settings.website || ''}
+                      placeholder="www.szerviz.hu"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Google Értékelés Link (QR kódhoz)</label>
+                    <input
+                      name="googleReviewUrl"
+                      type="url"
+                      defaultValue={settings.googleReviewUrl || ''}
+                      placeholder="https://g.page/r/your-id/review"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

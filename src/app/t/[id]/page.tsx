@@ -8,6 +8,7 @@ import StatusSelector from '@/components/StatusSelector';
 import PrioritySelector from '@/components/PrioritySelector';
 import PhotoGallery from '@/components/PhotoGallery';
 import StickerPrinter from '@/components/StickerPrinter';
+import ThermalPrinter from '@/components/ThermalPrinter';
 import DeviceHistory from '@/components/DeviceHistory';
 import EditWorkOrder from '@/components/EditWorkOrder';
 import DeleteWorkOrder from '@/components/DeleteWorkOrder';
@@ -59,6 +60,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
           <span>Vissza a főoldalra</span>
         </Link>
         <div className="flex items-center gap-3">
+          <ThermalPrinter workOrder={workOrder} settings={settings} />
           <StickerPrinter 
             workOrder={workOrder} 
             baseUrl={settings.baseUrl} 
@@ -132,6 +134,38 @@ export default async function TrackingPage({ params }: { params: { id: string } 
               </div>
             </section>
           </div>
+
+          {(workOrder.accessories || workOrder.estimatedPrice || workOrder.warranty) && (
+            <section className="bg-white border p-6 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                {workOrder.accessories && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Átvett Tartozékok</p>
+                    <p className="text-gray-900 font-semibold">{workOrder.accessories}</p>
+                  </div>
+                )}
+                {workOrder.estimatedPrice && (
+                  <div className="space-y-1 pt-4 md:pt-0 md:pl-8">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Várható Költség</p>
+                    <p className="text-blue-700 font-black text-xl">
+                      {typeof workOrder.estimatedPrice === 'string' && /^\d+$/.test(workOrder.estimatedPrice) 
+                        ? parseInt(workOrder.estimatedPrice).toLocaleString('hu-HU') + ' Ft'
+                        : workOrder.estimatedPrice}
+                    </p>
+                  </div>
+                )}
+                {workOrder.warranty && (
+                  <div className="space-y-1 pt-4 md:pt-0 md:pl-8">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Garancia Info</p>
+                    <p className="text-emerald-700 font-bold">{workOrder.warranty}</p>
+                    {workOrder.warrantyExpiry && (
+                      <p className="text-[10px] text-gray-500 font-medium">Lejárat: {new Date(workOrder.warrantyExpiry).toLocaleDateString('hu-HU')}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           <section className="bg-amber-50 p-6 rounded-2xl border border-amber-200 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 p-2 opacity-10">

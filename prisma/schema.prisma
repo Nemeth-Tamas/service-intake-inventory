@@ -17,6 +17,10 @@ model WorkOrder {
   serialNumber    String?
   condition       String?
   complaint       String?
+  accessories     String?
+  estimatedPrice  String?
+  warranty        String?
+  warrantyExpiry  DateTime?
   status          String   @default("Átvétel alatt") // Statuses in Hungarian
   priority        String   @default("Normál")       // Sürgős, Magas, Normál, Alacsony
   estimatedDone   DateTime?
@@ -50,6 +54,11 @@ model Settings {
   logoPath            String?
   workshopName        String  @default("Szerviz Központ")
   technicianName      String?
+  address             String?
+  phone               String?
+  email               String?
+  website             String?
+  googleReviewUrl     String?
   declarationTemplate String  @default("Alulírott ügyfél kijelentem, hogy a szolgáltatás megkezdése előtt tájékoztatást kaptam arról, hogy személyes adataimról biztonsági mentést kell készítenem. Az üzlet minden ésszerű lépést megtesz az adatok védelme érdekében, de nem garantálja a teljes körű helyreállítást, és nem vállal felelősséget az adatvesztésért. Hozzájárulok a készülék állapotának fotózásához és a mentett fájlok vírusellenőrzéséhez.")
   representativeSignature String? // Base64 signature of the workshop representative
 }

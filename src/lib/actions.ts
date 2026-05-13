@@ -43,6 +43,11 @@ export async function createWorkOrder(formData: FormData) {
   const serialNumber = formData.get('serialNumber') as string;
   const condition = formData.get('condition') as string;
   const complaint = formData.get('complaint') as string;
+  const accessories = formData.get('accessories') as string;
+  const estimatedPrice = formData.get('estimatedPrice') as string;
+  const warranty = formData.get('warranty') as string;
+  const warrantyExpiryStr = formData.get('warrantyExpiry') as string;
+  const warrantyExpiry = warrantyExpiryStr ? new Date(warrantyExpiryStr) : null;
   const priority = formData.get('priority') as string || 'Normál';
   const estimatedDoneStr = formData.get('estimatedDone') as string;
   const estimatedDone = estimatedDoneStr ? new Date(estimatedDoneStr) : null;
@@ -55,6 +60,10 @@ export async function createWorkOrder(formData: FormData) {
       serialNumber,
       condition,
       complaint,
+      accessories,
+      estimatedPrice,
+      warranty,
+      warrantyExpiry,
       priority,
       estimatedDone,
       status: 'Átvétel alatt',
@@ -81,13 +90,28 @@ export async function getSettings() {
   return settings;
 }
 
-export async function updateSettings(baseUrl: string, workshopName: string, technicianName: string, declarationTemplate?: string) {
+export async function updateSettings(
+  baseUrl: string, 
+  workshopName: string, 
+  technicianName: string, 
+  address: string, 
+  phone: string, 
+  email: string, 
+  website: string, 
+  googleReviewUrl?: string,
+  declarationTemplate?: string
+) {
   await prisma.settings.update({
     where: { id: 1 },
     data: {
       baseUrl,
       workshopName,
       technicianName,
+      address,
+      phone,
+      email,
+      website,
+      googleReviewUrl,
       ...(declarationTemplate !== undefined ? { declarationTemplate } : {})
     }
   });
@@ -357,6 +381,11 @@ export async function updateWorkOrderDetails(formData: FormData) {
   const serialNumber = formData.get('serialNumber') as string;
   const condition = formData.get('condition') as string;
   const complaint = formData.get('complaint') as string;
+  const accessories = formData.get('accessories') as string;
+  const estimatedPrice = formData.get('estimatedPrice') as string;
+  const warranty = formData.get('warranty') as string;
+  const warrantyExpiryStr = formData.get('warrantyExpiry') as string;
+  const warrantyExpiry = warrantyExpiryStr ? new Date(warrantyExpiryStr) : null;
   const estimatedDoneStr = formData.get('estimatedDone') as string;
   const estimatedDone = estimatedDoneStr ? new Date(estimatedDoneStr) : null;
 
@@ -369,6 +398,10 @@ export async function updateWorkOrderDetails(formData: FormData) {
       serialNumber,
       condition,
       complaint,
+      accessories,
+      estimatedPrice,
+      warranty,
+      warrantyExpiry,
       estimatedDone,
     },
   });

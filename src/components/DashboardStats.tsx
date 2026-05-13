@@ -19,7 +19,7 @@ export default async function DashboardStats({ currentTab }: { currentTab: strin
             <LayoutPanelLeft size={20} strokeWidth={3} /> 
             <span>Munkapad</span>
           </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full ${currentTab === 'bench' ? 'bg-white/20' : 'bg-gray-100'}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-full ml-4 ${currentTab === 'bench' ? 'bg-white/20' : 'bg-gray-100'}`}>
             {stats.active}
           </span>
         </a>
@@ -35,7 +35,7 @@ export default async function DashboardStats({ currentTab }: { currentTab: strin
             <Archive size={20} strokeWidth={3} /> 
             <span>Archívum</span>
           </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full ${currentTab === 'archive' ? 'bg-white/20' : 'bg-gray-100'}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-full ml-4 ${currentTab === 'archive' ? 'bg-white/20' : 'bg-gray-100'}`}>
             {stats.archived}
           </span>
         </a>
