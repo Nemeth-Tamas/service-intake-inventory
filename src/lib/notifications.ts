@@ -40,6 +40,8 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
   }
 
   const cleanPhone = toPhone.replace(/\s+/g, '');
+  // Strip accents to ensure GSM-7 encoding (160 character limit per SMS instead of 70 Unicode UCS-2 limit)
+  const cleanMessage = stripHungarianAccents(message);
 
   if (settings.smsApiUrl.includes('seeme.hu') || settings.smsApiUrl.includes('seememobile.com')) {
     // Seeme expects numbers in international format without leading + or 00, e.g. 36201234567
@@ -53,7 +55,7 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
     const params = new URLSearchParams({
       key: settings.smsApiKey || '',
       number: seemePhone,
-      message: message,
+      message: cleanMessage,
       format: 'json'
     });
     if (settings.smsSender) {
@@ -76,7 +78,7 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
 
   const payload: any = {
     to: cleanPhone,
-    message: message,
+    message: cleanMessage,
   };
   if (settings.smsSender) payload.sender = settings.smsSender;
 
@@ -94,4 +96,12 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
     const errText = await res.text().catch(() => '');
     throw new Error(`SMS Gateway returned HTTP ${res.status}: ${errText}`);
   }
+}
+
+function stripHungarianAccents(text: string): string {
+  const mapping: { [key: string]: string } = {
+    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ö': 'o', 'ő': 'o', 'ú': 'u', 'ü': 'u', 'ű': 'u',
+    'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ö': 'O', 'Ő': 'O', 'Ú': 'U', 'Ü': 'U', 'Ű': 'U'
+  };
+  return text.split('').map(char => mapping[char] || char).join('');
 }
