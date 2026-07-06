@@ -2,10 +2,21 @@
 
 import { prisma } from './prisma';
 import { revalidatePath } from 'next/cache';
-import { writeFile, mkdir, unlink, stat, readdir } from 'fs/promises';
+import { writeFile, mkdir, unlink, stat, readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { publishUpdate } from './realtime';
+import { z } from 'zod';
+import DOMPurify from 'isomorphic-dompurify';
+import { 
+  STATUSES, 
+  PRIORITIES, 
+  WorkOrderCreateSchema, 
+  WorkOrderUpdateSchema, 
+  LineItemSchema, 
+  SettingsSchema, 
+  SignatureSchema 
+} from './validation';
 
 // Helper to trigger real-time updates
 async function triggerUpdate(workOrderId?: string) {
@@ -37,35 +48,26 @@ async function recordSystemActivity(type: 'INFO' | 'WARNING' | 'SUCCESS' | 'SYST
 }
 
 export async function createWorkOrder(formData: FormData) {
-  const customerName = formData.get('customerName') as string;
-  const customerContact = formData.get('customerContact') as string;
-  const deviceType = formData.get('deviceType') as string;
-  const serialNumber = formData.get('serialNumber') as string;
-  const condition = formData.get('condition') as string;
-  const complaint = formData.get('complaint') as string;
-  const accessories = formData.get('accessories') as string;
-  const estimatedPrice = formData.get('estimatedPrice') as string;
-  const warranty = formData.get('warranty') as string;
-  const warrantyExpiryStr = formData.get('warrantyExpiry') as string;
-  const warrantyExpiry = warrantyExpiryStr ? new Date(warrantyExpiryStr) : null;
-  const priority = formData.get('priority') as string || 'Normál';
-  const estimatedDoneStr = formData.get('estimatedDone') as string;
-  const estimatedDone = estimatedDoneStr ? new Date(estimatedDoneStr) : null;
+  const rawData = {
+    customerName: formData.get('customerName'),
+    customerContact: formData.get('customerContact'),
+    deviceType: formData.get('deviceType'),
+    serialNumber: formData.get('serialNumber'),
+    condition: formData.get('condition'),
+    complaint: formData.get('complaint'),
+    accessories: formData.get('accessories'),
+    estimatedPrice: formData.get('estimatedPrice'),
+    warranty: formData.get('warranty'),
+    warrantyExpiry: formData.get('warrantyExpiry'),
+    priority: formData.get('priority') || undefined,
+    estimatedDone: formData.get('estimatedDone'),
+  };
+
+  const parsed = WorkOrderCreateSchema.parse(rawData);
 
   const workOrder = await prisma.workOrder.create({
     data: {
-      customerName,
-      customerContact,
-      deviceType,
-      serialNumber,
-      condition,
-      complaint,
-      accessories,
-      estimatedPrice,
-      warranty,
-      warrantyExpiry,
-      priority,
-      estimatedDone,
+      ...parsed,
       status: 'Átvétel alatt',
       statusHistory: {
         create: { status: 'Átvétel alatt' }
@@ -74,7 +76,7 @@ export async function createWorkOrder(formData: FormData) {
   });
 
   await logActivity(workOrder.id, 'Munkalap létrehozva.');
-  await recordSystemActivity('SUCCESS', `Új munkalap rögzítve: ${deviceType} (${customerName})`, workOrder.id);
+  await recordSystemActivity('SUCCESS', `Új munkalap rögzítve: ${parsed.deviceType || 'Ismeretlen'} (${parsed.customerName || 'Névtelen'})`, workOrder.id);
   await triggerUpdate();
   const redirect = (await import('next/navigation')).redirect;
   redirect(`/t/${workOrder.id}`);
@@ -99,21 +101,50 @@ export async function updateSettings(
   email: string, 
   website: string, 
   googleReviewUrl?: string,
-  declarationTemplate?: string
+  declarationTemplate?: string,
+  backupInterval?: string,
+  nasBackupPath?: string,
+  smtpHost?: string,
+  smtpPort?: string | number,
+  smtpUser?: string,
+  smtpPass?: string,
+  smtpFrom?: string,
+  smsApiUrl?: string,
+  smsApiKey?: string,
+  smsSender?: string
 ) {
+  const parsed = SettingsSchema.parse({
+    baseUrl,
+    workshopName,
+    technicianName,
+    address,
+    phone,
+    email,
+    website,
+    googleReviewUrl,
+    declarationTemplate,
+    backupInterval,
+    nasBackupPath,
+    smtpHost,
+    smtpPort,
+    smtpUser,
+    smtpPass,
+    smtpFrom,
+    smsApiUrl,
+    smsApiKey,
+    smsSender,
+  });
+
+  if (parsed.declarationTemplate) {
+    parsed.declarationTemplate = DOMPurify.sanitize(parsed.declarationTemplate, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3'],
+      ALLOWED_ATTR: [],
+    });
+  }
+
   await prisma.settings.update({
     where: { id: 1 },
-    data: {
-      baseUrl,
-      workshopName,
-      technicianName,
-      address,
-      phone,
-      email,
-      website,
-      googleReviewUrl,
-      ...(declarationTemplate !== undefined ? { declarationTemplate } : {})
-    }
+    data: parsed
   });
   revalidatePath('/');
   revalidatePath('/settings');
@@ -121,9 +152,10 @@ export async function updateSettings(
 }
 
 export async function updateRepresentativeSignature(signatureData: string | null) {
+  const validatedSignature = z.string().nullable().parse(signatureData);
   await prisma.settings.update({
     where: { id: 1 },
-    data: { representativeSignature: signatureData },
+    data: { representativeSignature: validatedSignature },
   });
 
   revalidatePath('/settings');
@@ -263,10 +295,8 @@ export async function runCleanup() {
 }
 
 export async function archiveWorkOrderPdf(formData: FormData) {
-  const workOrderId = formData.get('workOrderId') as string;
-  const pdfBase64 = formData.get('pdfData') as string;
-
-  if (!workOrderId || !pdfBase64) return { success: false };
+  const workOrderId = z.string().cuid().parse(formData.get('workOrderId'));
+  const pdfBase64 = z.string().min(1, 'PDF data cannot be empty').parse(formData.get('pdfData'));
 
   try {
     const archiveDir = join(process.cwd(), 'public', 'archives');
@@ -295,8 +325,8 @@ export async function archiveWorkOrderPdf(formData: FormData) {
 }
 
 export async function addNote(formData: FormData) {
-  const workOrderId = formData.get('workOrderId') as string;
-  const text = formData.get('text') as string;
+  const workOrderId = z.string().cuid().parse(formData.get('workOrderId'));
+  const text = z.string().trim().min(1, 'A jegyzet nem lehet üres').max(2000).parse(formData.get('text'));
 
   await prisma.note.create({
     data: {
@@ -310,158 +340,275 @@ export async function addNote(formData: FormData) {
 }
 
 export async function addLineItem(formData: FormData) {
-  const workOrderId = formData.get('workOrderId') as string;
-  const description = formData.get('description') as string;
-  const amount = parseInt(formData.get('amount') as string) || 0;
+  const rawData = {
+    workOrderId: formData.get('workOrderId'),
+    description: formData.get('description'),
+    amount: formData.get('amount'),
+  };
+
+  const parsed = LineItemSchema.parse(rawData);
 
   await prisma.lineItem.create({
-    data: { workOrderId, description, amount }
+    data: parsed
   });
 
-  await logActivity(workOrderId, `Tétel hozzáadva: ${description} (${amount.toLocaleString('hu-HU')} Ft)`);
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await logActivity(parsed.workOrderId, `Tétel hozzáadva: ${parsed.description} (${parsed.amount.toLocaleString('hu-HU')} Ft)`);
+  await triggerUpdate(parsed.workOrderId);
+  revalidatePath(`/t/${parsed.workOrderId}`);
 }
 
 export async function deleteLineItem(id: string, workOrderId: string) {
-  const item = await prisma.lineItem.findUnique({ where: { id } });
+  const parsedId = z.string().cuid().parse(id);
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+
+  const item = await prisma.lineItem.findUnique({ where: { id: parsedId } });
   if (item) {
-    await prisma.lineItem.delete({ where: { id } });
-    await logActivity(workOrderId, `Tétel törölve: ${item.description}`);
+    await prisma.lineItem.delete({ where: { id: parsedId } });
+    await logActivity(parsedWorkOrderId, `Tétel törölve: ${item.description}`);
   }
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
 }
 
 export async function updateStatus(workOrderId: string, status: string) {
-  const oldOrder = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
-  await prisma.workOrder.update({
-    where: { id: workOrderId },
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+  const parsedStatus = z.enum(STATUSES).parse(status);
+
+  const oldOrder = await prisma.workOrder.findUnique({ where: { id: parsedWorkOrderId } });
+  const updatedOrder = await prisma.workOrder.update({
+    where: { id: parsedWorkOrderId },
     data: { 
-      status,
+      status: parsedStatus,
       statusHistory: {
-        create: { status }
+        create: { status: parsedStatus }
       }
     },
+    include: {
+      notes: { orderBy: { createdAt: 'desc' } },
+      photos: { orderBy: { createdAt: 'desc' } },
+      statusHistory: { orderBy: { createdAt: 'desc' } },
+      lineItems: { orderBy: { createdAt: 'desc' } },
+    }
   });
 
-  await logActivity(workOrderId, `Státusz módosítva: ${oldOrder?.status} -> ${status}`);
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  // If status is "Kiadva" (Handed over), generate and archive PDF server-side automatically
+  if (parsedStatus === 'Kiadva' && !updatedOrder.archivedPdfPath) {
+    try {
+      const settings = await getSettings();
+      const { renderToBuffer } = await import('@react-pdf/renderer');
+      const React = await import('react');
+      const { WorkOrderDocument } = await import('./pdfTemplates');
+      const sharp = (await import('sharp')).default;
+
+      // Pre-process logo
+      let logoBase64: string | null = null;
+      if (settings.logoPath) {
+        const logoDiskPath = join(process.cwd(), 'public', settings.logoPath);
+        try {
+          if (existsSync(logoDiskPath)) {
+            const extension = settings.logoPath.split('.').pop()?.toLowerCase();
+            const buffer = await readFile(logoDiskPath);
+            if (extension === 'webp') {
+              const pngBuffer = await sharp(logoDiskPath).png().toBuffer();
+              logoBase64 = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+            } else {
+              const mimeType = extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : 'image/png';
+              logoBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load logo for PDF:', err);
+        }
+      }
+
+      // Pre-process photos (convert WebP to JPEG on-the-fly)
+      const photosWithBase64 = await Promise.all(
+        updatedOrder.photos.map(async (photo) => {
+          const photoDiskPath = join(process.cwd(), 'public', photo.filePath);
+          try {
+            if (existsSync(photoDiskPath)) {
+              const buffer = await sharp(photoDiskPath).jpeg({ quality: 85 }).toBuffer();
+              return {
+                ...photo,
+                base64Src: `data:image/jpeg;base64,${buffer.toString('base64')}`,
+              };
+            }
+          } catch (err) {
+            console.error(`Failed to convert WebP to JPEG for PDF: ${photo.filePath}`, err);
+          }
+          return { ...photo, base64Src: null };
+        })
+      );
+
+      const workOrderForPdf = {
+        ...updatedOrder,
+        photos: photosWithBase64,
+      };
+
+      const settingsForPdf = {
+        ...settings,
+        logoPath: logoBase64,
+      };
+
+      const buffer = await renderToBuffer(
+        React.createElement(WorkOrderDocument, { workOrder: workOrderForPdf, settings: settingsForPdf }) as any
+      );
+
+      const archiveDir = join(process.cwd(), 'public', 'archives');
+      if (!existsSync(archiveDir)) {
+        await mkdir(archiveDir, { recursive: true });
+      }
+
+      const fileName = `munkalap-${parsedWorkOrderId}-${Date.now()}.pdf`;
+      const filePath = `/archives/${fileName}`;
+      const fullPath = join(archiveDir, fileName);
+
+      await writeFile(fullPath, buffer);
+
+      await prisma.workOrder.update({
+        where: { id: parsedWorkOrderId },
+        data: { archivedPdfPath: filePath }
+      });
+    } catch (pdfError) {
+      console.error('Failed to automatically archive PDF on Kiadva status change:', pdfError);
+    }
+  }
+
+  await logActivity(parsedWorkOrderId, `Státusz módosítva: ${oldOrder?.status} -> ${parsedStatus}`);
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
 }
 
 export async function updatePhotoDescription(photoId: string, description: string, workOrderId: string) {
+  const parsedPhotoId = z.string().cuid().parse(photoId);
+  const parsedDescription = z.string().trim().max(1000).parse(description);
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+
   await prisma.photo.update({
-    where: { id: photoId },
-    data: { description },
+    where: { id: parsedPhotoId },
+    data: { description: parsedDescription },
   });
 
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
 }
 
 export async function deletePhoto(photoId: string, workOrderId: string) {
-  const photo = await prisma.photo.findUnique({ where: { id: photoId } });
+  const parsedPhotoId = z.string().cuid().parse(photoId);
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+
+  const photo = await prisma.photo.findUnique({ where: { id: parsedPhotoId } });
   if (photo) {
     try {
       await unlink(join(process.cwd(), 'public', photo.filePath));
     } catch (e) {}
-    await prisma.photo.delete({ where: { id: photoId } });
-    await logActivity(workOrderId, 'Fotó törölve.');
+    await prisma.photo.delete({ where: { id: parsedPhotoId } });
+    await logActivity(parsedWorkOrderId, 'Fotó törölve.');
   }
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
 }
 
 export async function updateWorkOrderDetails(formData: FormData) {
-  const id = formData.get('id') as string;
-  const customerName = formData.get('customerName') as string;
-  const customerContact = formData.get('customerContact') as string;
-  const deviceType = formData.get('deviceType') as string;
-  const serialNumber = formData.get('serialNumber') as string;
-  const condition = formData.get('condition') as string;
-  const complaint = formData.get('complaint') as string;
-  const accessories = formData.get('accessories') as string;
-  const estimatedPrice = formData.get('estimatedPrice') as string;
-  const warranty = formData.get('warranty') as string;
-  const warrantyExpiryStr = formData.get('warrantyExpiry') as string;
-  const warrantyExpiry = warrantyExpiryStr ? new Date(warrantyExpiryStr) : null;
-  const estimatedDoneStr = formData.get('estimatedDone') as string;
-  const estimatedDone = estimatedDoneStr ? new Date(estimatedDoneStr) : null;
+  const rawData = {
+    id: formData.get('id'),
+    customerName: formData.get('customerName'),
+    customerContact: formData.get('customerContact'),
+    deviceType: formData.get('deviceType'),
+    serialNumber: formData.get('serialNumber'),
+    condition: formData.get('condition'),
+    complaint: formData.get('complaint'),
+    accessories: formData.get('accessories'),
+    estimatedPrice: formData.get('estimatedPrice'),
+    warranty: formData.get('warranty'),
+    warrantyExpiry: formData.get('warrantyExpiry'),
+    estimatedDone: formData.get('estimatedDone'),
+  };
+
+  const parsed = WorkOrderUpdateSchema.parse(rawData);
 
   await prisma.workOrder.update({
-    where: { id },
+    where: { id: parsed.id },
     data: {
-      customerName,
-      customerContact,
-      deviceType,
-      serialNumber,
-      condition,
-      complaint,
-      accessories,
-      estimatedPrice,
-      warranty,
-      warrantyExpiry,
-      estimatedDone,
+      customerName: parsed.customerName,
+      customerContact: parsed.customerContact,
+      deviceType: parsed.deviceType,
+      serialNumber: parsed.serialNumber,
+      condition: parsed.condition,
+      complaint: parsed.complaint,
+      accessories: parsed.accessories,
+      estimatedPrice: parsed.estimatedPrice,
+      warranty: parsed.warranty,
+      warrantyExpiry: parsed.warrantyExpiry,
+      estimatedDone: parsed.estimatedDone,
     },
   });
 
-  await logActivity(id, 'Munkalap adatai módosítva.');
-  await triggerUpdate(id);
-  revalidatePath(`/t/${id}`);
+  await logActivity(parsed.id, 'Munkalap adatai módosítva.');
+  await triggerUpdate(parsed.id);
+  revalidatePath(`/t/${parsed.id}`);
   revalidatePath('/');
 }
 
 export async function updatePriority(workOrderId: string, priority: string) {
-  const oldOrder = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+  const parsedPriority = z.enum(PRIORITIES).parse(priority);
+
+  const oldOrder = await prisma.workOrder.findUnique({ where: { id: parsedWorkOrderId } });
   await prisma.workOrder.update({
-    where: { id: workOrderId },
-    data: { priority },
+    where: { id: parsedWorkOrderId },
+    data: { priority: parsedPriority },
   });
 
-  await logActivity(workOrderId, `Prioritás módosítva: ${oldOrder?.priority} -> ${priority}`);
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await logActivity(parsedWorkOrderId, `Prioritás módosítva: ${oldOrder?.priority} -> ${parsedPriority}`);
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
   revalidatePath('/');
 }
 
 export async function toggleSignatureQueue(workOrderId: string, status: boolean) {
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+  const parsedStatus = z.boolean().parse(status);
+
   await prisma.workOrder.update({
-    where: { id: workOrderId },
-    data: { isWaitingForSignature: status }
+    where: { id: parsedWorkOrderId },
+    data: { isWaitingForSignature: parsedStatus }
   });
 
-  await logActivity(workOrderId, status ? 'Munkalap aláírásra váró sorba helyezve.' : 'Munkalap eltávolítva az aláírási sorból.');
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await logActivity(parsedWorkOrderId, parsedStatus ? 'Munkalap aláírásra váró sorba helyezve.' : 'Munkalap eltávolítva az aláírási sorból.');
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
   revalidatePath('/sign');
   revalidatePath('/');
 }
 
 export async function saveSignature(workOrderId: string, signatureData: string) {
+  const parsed = SignatureSchema.parse({ workOrderId, signatureData });
   const settings = await getSettings();
   
   await prisma.workOrder.update({
-    where: { id: workOrderId },
+    where: { id: parsed.workOrderId },
     data: { 
-      signatureData,
+      signatureData: parsed.signatureData,
       signedAt: new Date(),
       isWaitingForSignature: false,
       signedDeclarationText: settings.declarationTemplate
     }
   });
 
-  await logActivity(workOrderId, 'Munkalap digitálisan aláírva.');
-  await recordSystemActivity('SUCCESS', `Munkalap aláírva: ${workOrderId}`, workOrderId);
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await logActivity(parsed.workOrderId, 'Munkalap digitálisan aláírva.');
+  await recordSystemActivity('SUCCESS', `Munkalap aláírva: ${parsed.workOrderId}`, parsed.workOrderId);
+  await triggerUpdate(parsed.workOrderId);
+  revalidatePath(`/t/${parsed.workOrderId}`);
   revalidatePath('/sign');
   revalidatePath('/');
 }
 
 export async function voidSignature(workOrderId: string) {
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+
   await prisma.workOrder.update({
-    where: { id: workOrderId },
+    where: { id: parsedWorkOrderId },
     data: { 
       signatureData: null,
       signedAt: null,
@@ -470,17 +617,19 @@ export async function voidSignature(workOrderId: string) {
     }
   });
 
-  await logActivity(workOrderId, 'Aláírás érvénytelenítve.');
-  await recordSystemActivity('WARNING', `Aláírás érvénytelenítve: ${workOrderId}`, workOrderId);
-  await triggerUpdate(workOrderId);
-  revalidatePath(`/t/${workOrderId}`);
+  await logActivity(parsedWorkOrderId, 'Aláírás érvénytelenítve.');
+  await recordSystemActivity('WARNING', `Aláírás érvénytelenítve: ${parsedWorkOrderId}`, parsedWorkOrderId);
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
   revalidatePath('/sign');
   revalidatePath('/');
 }
 
 export async function deleteWorkOrder(workOrderId: string) {
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+
   const order = await prisma.workOrder.findUnique({
-    where: { id: workOrderId },
+    where: { id: parsedWorkOrderId },
     include: { photos: true }
   });
 
@@ -499,15 +648,106 @@ export async function deleteWorkOrder(workOrderId: string) {
   }
 
   await prisma.$transaction([
-    prisma.statusLog.deleteMany({ where: { workOrderId } }),
-    prisma.note.deleteMany({ where: { workOrderId } }),
-    prisma.lineItem.deleteMany({ where: { workOrderId } }),
-    prisma.photo.deleteMany({ where: { workOrderId } }),
-    prisma.workOrder.delete({ where: { id: workOrderId } }),
+    prisma.statusLog.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
+    prisma.note.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
+    prisma.lineItem.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
+    prisma.photo.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
+    prisma.workOrder.delete({ where: { id: parsedWorkOrderId } }),
   ]);
 
   await triggerUpdate();
   revalidatePath('/');
   const redirect = (await import('next/navigation')).redirect;
   redirect('/');
+}
+
+export async function triggerManualBackup() {
+  const { runBackupJob } = await import('./backup');
+  await runBackupJob();
+  revalidatePath('/settings');
+  revalidatePath('/');
+}
+
+export async function triggerRestoreBackup(formData: FormData) {
+  const file = formData.get('backupFile') as File;
+  if (!file || file.size === 0) {
+    throw new Error('Nem választott ki fájlt.');
+  }
+
+  const tempDir = join(process.cwd(), 'prisma/data/temp');
+  if (!existsSync(tempDir)) {
+    await mkdir(tempDir, { recursive: true });
+  }
+
+  const tempPath = join(tempDir, `restore-${Date.now()}.zip`);
+  const arrayBuffer = await file.arrayBuffer();
+  await writeFile(tempPath, Buffer.from(arrayBuffer));
+
+  try {
+    const { restoreBackup } = await import('./backup');
+    await restoreBackup(tempPath);
+  } finally {
+    if (existsSync(tempPath)) {
+      await unlink(tempPath);
+    }
+  }
+
+  revalidatePath('/settings');
+  revalidatePath('/');
+}
+
+export async function sendNotificationEmailAction(workOrderId: string, templateKey: string) {
+  const parsedId = z.string().cuid().parse(workOrderId);
+  const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: parsedId }
+  });
+
+  if (!workOrder || !workOrder.customerContact) {
+    throw new Error('Munkalap vagy elérhetőség nem található.');
+  }
+
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  const match = workOrder.customerContact.match(emailRegex);
+  if (!match) {
+    throw new Error('Nem található érvényes email cím az ügyfél adatai között.');
+  }
+  const toEmail = match[0];
+
+  const settings = await getSettings();
+  const { NOTIFICATION_TEMPLATES, compileTemplate, sendEmailNotification } = await import('./notifications');
+  const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
+  const message = compileTemplate(template.text, workOrder, settings);
+
+  await sendEmailNotification(settings, toEmail, `${settings.workshopName} - Értesítés`, message);
+  await logActivity(parsedId, `Email értesítés elküldve (${template.title}) -> ${toEmail}`);
+}
+
+export async function sendNotificationSMSAction(workOrderId: string, templateKey: string) {
+  const parsedId = z.string().cuid().parse(workOrderId);
+  const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: parsedId }
+  });
+
+  if (!workOrder || !workOrder.customerContact) {
+    throw new Error('Munkalap vagy elérhetőség nem található.');
+  }
+
+  const phoneRegex = /(?:\+?)[0-9\s-]{7,15}/;
+  const match = workOrder.customerContact.match(phoneRegex);
+  if (!match) {
+    throw new Error('Nem található érvényes telefonszám az ügyfél adatai között.');
+  }
+  const toPhone = match[0].replace(/\s+/g, '');
+
+  const settings = await getSettings();
+  const { NOTIFICATION_TEMPLATES, compileTemplate, sendSMSNotification } = await import('./notifications');
+  const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
+  const message = compileTemplate(template.text, workOrder, settings);
+
+  await sendSMSNotification(settings, toPhone, message);
+  await logActivity(parsedId, `SMS értesítés elküldve (${template.title}) -> ${toPhone}`);
 }

@@ -6,16 +6,17 @@ import { existsSync } from 'fs';
 import convert from 'heic-convert';
 import sharp from 'sharp';
 import { publishUpdate } from '@/lib/realtime';
+import { z } from 'zod';
+import { PhotoUploadSchema } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const workOrderId = formData.get('workOrderId') as string;
+    const rawFile = formData.get('file');
+    const rawWorkOrderId = formData.get('workOrderId');
 
-    if (!file || !workOrderId) {
-      return NextResponse.json({ error: 'Missing data' }, { status: 400 });
-    }
+    const parsed = PhotoUploadSchema.parse({ file: rawFile, workOrderId: rawWorkOrderId });
+    const { file, workOrderId } = parsed;
 
     let buffer = Buffer.from(await file.arrayBuffer());
     const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
@@ -61,6 +62,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, photo });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
+    }
     console.error('Upload/Optimization error:', error);
     return NextResponse.json({ error: 'Failed to process image' }, { status: 500 });
   }

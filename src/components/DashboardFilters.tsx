@@ -3,18 +3,9 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, X } from 'lucide-react';
 import { useTransition } from 'react';
+import { STATUSES } from '@/lib/validation';
 
-const statuses = [
-  'Összes',
-  'Átvétel alatt',
-  'Bevizsgálás alatt',
-  'Alkatrészre vár',
-  'Javítás folyamatban',
-  'Tesztelés alatt',
-  'Kész / Átvehető',
-  'Kiadva',
-  'Javíthatatlan'
-];
+const statuses = ['Összes', ...STATUSES];
 
 export default function DashboardFilters() {
   const router = useRouter();

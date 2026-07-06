@@ -3,17 +3,9 @@
 import { updateStatus } from '@/lib/actions';
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { STATUSES } from '@/lib/validation';
 
-const statuses = [
-  'Átvétel alatt',
-  'Bevizsgálás alatt',
-  'Alkatrészre vár',
-  'Javítás folyamatban',
-  'Tesztelés alatt',
-  'Kész / Átvehető',
-  'Kiadva',
-  'Javíthatatlan'
-];
+const statuses = STATUSES;
 
 export default function StatusSelector({ 
   workOrderId, 

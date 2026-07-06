@@ -1,27 +1,41 @@
-import { readFile } from 'fs/promises';
-import { join } from 'path';
 import { NextResponse } from 'next/server';
-import { existsSync } from 'fs';
+import path from 'path';
+import fs from 'fs';
+import AdmZip from 'adm-zip';
 
 export async function GET() {
-  const dbPath = join(process.cwd(), 'prisma/data/dev.db');
-  
-  if (!existsSync(dbPath)) {
-    return new NextResponse('Backup file not found', { status: 404 });
-  }
-
   try {
-    const fileBuffer = await readFile(dbPath);
-    const fileName = `backup-serviceapp-${new Date().toISOString().split('T')[0]}.db`;
+    const zip = new AdmZip();
 
-    return new NextResponse(fileBuffer, {
+    // Add DB
+    const dbPath = path.join(process.cwd(), 'prisma/data/dev.db');
+    if (fs.existsSync(dbPath)) {
+      zip.addLocalFile(dbPath, 'db');
+    }
+
+    // Add Uploads
+    const uploadsDir = path.join(process.cwd(), 'public/uploads');
+    if (fs.existsSync(uploadsDir)) {
+      zip.addLocalFolder(uploadsDir, 'uploads');
+    }
+
+    // Add Archives
+    const archivesDir = path.join(process.cwd(), 'public/archives');
+    if (fs.existsSync(archivesDir)) {
+      zip.addLocalFolder(archivesDir, 'archives');
+    }
+
+    const buffer = zip.toBuffer();
+    const fileName = `backup-serviceapp-${new Date().toISOString().split('T')[0]}.zip`;
+
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': 'application/x-sqlite3',
+        'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     });
   } catch (error) {
-    console.error('Backup error:', error);
+    console.error('Backup ZIP download error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

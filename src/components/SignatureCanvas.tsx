@@ -5,6 +5,7 @@ import SignaturePad from 'react-signature-canvas'
 import { Check, X, Eraser } from 'lucide-react'
 import { saveSignature } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
+import DOMPurify from 'isomorphic-dompurify'
 
 interface Props {
   workOrderId: string
@@ -42,6 +43,11 @@ export default function SignatureCanvas({ workOrderId, customerName, declaration
     }
   }
 
+  const sanitizedDeclaration = DOMPurify.sanitize(declarationText, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3'],
+    ALLOWED_ATTR: [],
+  });
+
   return (
     <div className="flex flex-col h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100">
       <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8">
@@ -61,7 +67,7 @@ export default function SignatureCanvas({ workOrderId, customerName, declaration
                     .declaration-content p:last-child, .declaration-content ul:last-child { margin-bottom: 0 !important; }
                     .declaration-content { word-break: break-word !important; overflow-wrap: break-word !important; }
                   </style>
-                  ${declarationText.replace(/&nbsp;/g, ' ')}
+                  ${sanitizedDeclaration.replace(/&nbsp;/g, ' ')}
                 `
               }}
             />

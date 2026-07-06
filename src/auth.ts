@@ -1,6 +1,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
+const adminUser = process.env.AUTH_USER;
+const adminPass = process.env.AUTH_PASS;
+
+if (typeof process !== "undefined" && process.env.NEXT_PHASE !== "phase-production-build") {
+  if (!adminUser || !adminPass) {
+    throw new Error("FATAL: AUTH_USER and AUTH_PASS environment variables must be defined.");
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -11,8 +20,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Jelszó", type: "password" },
       },
       async authorize(credentials) {
-        const adminUser = process.env.AUTH_USER || "admin";
-        const adminPass = process.env.AUTH_PASS || "admin123";
+        if (!adminUser || !adminPass) {
+          throw new Error("AUTH_USER and AUTH_PASS environment variables are not configured.");
+        }
 
         if (
           credentials?.username === adminUser &&

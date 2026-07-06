@@ -17,6 +17,7 @@ import MobileQuickActions from '@/components/MobileQuickActions';
 import RealTimeListener from '@/components/RealTimeListener';
 import SignatureTrigger from '@/components/SignatureTrigger';
 import DeclarationPDFButton from '@/components/DeclarationPDFButton';
+import CustomerNotifications from '@/components/CustomerNotifications';
 import { addNote, getSettings } from '@/lib/actions';
 import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, FileText, PenTool } from 'lucide-react';
 import Link from 'next/link';
@@ -47,7 +48,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
   const isPurged = workOrder.status === 'Kiadva' && workOrder.photos.length === 0 && workOrder.archivedPdfPath;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 pb-32">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-32">
       <RealTimeListener event={`order-${workOrder.id}`} />
       <MobileQuickActions workOrderId={workOrder.id} />
       
@@ -230,6 +231,8 @@ export default async function TrackingPage({ params }: { params: { id: string } 
               <DeclarationPDFButton workOrder={workOrder} />
             )}
           </section>
+
+          <CustomerNotifications workOrder={workOrder} settings={settings} />
 
           <div className="bg-white border p-6 rounded-2xl shadow-sm flex flex-col items-center justify-center space-y-4">
             <QRCodeDisplay value={absoluteUrl} />

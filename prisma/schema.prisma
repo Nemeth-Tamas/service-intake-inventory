@@ -61,6 +61,25 @@ model Settings {
   googleReviewUrl     String?
   declarationTemplate String  @default("Alulírott ügyfél kijelentem, hogy a szolgáltatás megkezdése előtt tájékoztatást kaptam arról, hogy személyes adataimról biztonsági mentést kell készítenem. Az üzlet minden ésszerű lépést megtesz az adatok védelme érdekében, de nem garantálja a teljes körű helyreállítást, és nem vállal felelősséget az adatvesztésért. Hozzájárulok a készülék állapotának fotózásához és a mentett fájlok vírusellenőrzéséhez.")
   representativeSignature String? // Base64 signature of the workshop representative
+
+  // Backup configurations
+  backupInterval      String  @default("none") // none, daily, weekly
+  lastBackupTime      DateTime?
+  backupStatus        String  @default("none") // success, failed, none
+  backupError         String?
+  nasBackupPath       String?
+
+  // Email SMTP settings
+  smtpHost            String?
+  smtpPort            Int?
+  smtpUser            String?
+  smtpPass            String?
+  smtpFrom            String?
+
+  // SMS Gateway settings
+  smsApiUrl           String?
+  smsApiKey           String?
+  smsSender           String?
 }
 
 model StatusLog {
