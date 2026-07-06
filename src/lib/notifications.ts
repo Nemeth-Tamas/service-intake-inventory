@@ -53,6 +53,50 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
     }
   }
 
+  if (settings.smsApiUrl.includes('bulkgate.com')) {
+    const [appId, appToken] = (settings.smsApiKey || '').split(':');
+    if (!appId || !appToken) {
+      throw new Error('A BulkGate hitelesítéshez "ApplicationID:ApplicationToken" formátum szükséges az API kulcs mezőben.');
+    }
+
+    const payload: any = {
+      application_id: appId,
+      application_token: appToken,
+      number: cleanPhone,
+      text: cleanMessage,
+      unicode: false
+    };
+
+    if (settings.smsSender) {
+      if (/^\d+$/.test(settings.smsSender)) {
+        payload.sender_id = 'gSystem';
+        payload.sender_id_value = settings.smsSender;
+      } else {
+        payload.sender_id = 'gText';
+        payload.sender_id_value = settings.smsSender;
+      }
+    }
+
+    const res = await fetch(settings.smsApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`BulkGate SMS Gateway returned HTTP ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json().catch(() => null);
+    if (data && data.error) {
+      throw new Error(`BulkGate API hiba: ${data.error} (Kód: ${data.code})`);
+    }
+    return;
+  }
+
   if (settings.smsApiUrl.includes('seeme.hu') || settings.smsApiUrl.includes('seememobile.com')) {
     // Seeme expects numbers in international format without leading + or 00, e.g. 36201234567
     let seemePhone = cleanPhone.replace(/^\+|^00/, '');

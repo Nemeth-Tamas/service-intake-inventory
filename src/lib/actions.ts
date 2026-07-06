@@ -771,6 +771,58 @@ export async function getSMSBalanceAction() {
       return { isConfigured: false };
     }
 
+    if (settings.smsApiUrl.includes('bulkgate.com')) {
+      const [appId, appToken] = (settings.smsApiKey || '').split(':');
+      if (!appId || !appToken) {
+        return { isConfigured: true, error: 'A BulkGate hitelesítéshez "ApplicationID:ApplicationToken" formátum szükséges az API kulcs mezőben.' };
+      }
+
+      const res = await fetch('https://portal.bulkgate.com/api/1.0/simple/info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          application_id: appId,
+          application_token: appToken
+        }),
+        next: { revalidate: 60 }
+      });
+
+      if (!res.ok) {
+        return { isConfigured: true, error: `BulkGate returned HTTP ${res.status}` };
+      }
+
+      const data = await res.json().catch(() => null);
+      if (data && (data.status === 'success' || data.balance)) {
+        const balanceVal = Number(data.balance?.amount ?? data.data?.credit ?? 0);
+        const currencyVal = data.balance?.currency ?? data.data?.currency ?? 'EUR';
+        
+        let isLow = false;
+        if (currencyVal === 'HUF') {
+          isLow = balanceVal < 1000;
+        } else if (currencyVal === 'EUR') {
+          isLow = balanceVal < 3;
+        } else {
+          isLow = balanceVal < 10;
+        }
+
+        return {
+          isConfigured: true,
+          success: true,
+          balance: balanceVal,
+          currency: currencyVal,
+          isLow: isLow
+        };
+      } else {
+        return {
+          isConfigured: true,
+          success: false,
+          error: data?.error || 'Ismeretlen BulkGate API hiba'
+        };
+      }
+    }
+
     if (settings.smsApiUrl.includes('seeme.hu') || settings.smsApiUrl.includes('seememobile.com')) {
       const params = new URLSearchParams({
         key: settings.smsApiKey,
