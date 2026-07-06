@@ -763,3 +763,49 @@ export async function sendNotificationSMSAction(workOrderId: string, templateKey
     return { success: false, error: err.message || 'Ismeretlen hiba történt az SMS küldése során.' };
   }
 }
+
+export async function getSMSBalanceAction() {
+  try {
+    const settings = await getSettings();
+    if (!settings.smsApiUrl || !settings.smsApiKey) {
+      return { isConfigured: false };
+    }
+
+    if (settings.smsApiUrl.includes('seeme.hu') || settings.smsApiUrl.includes('seememobile.com')) {
+      const params = new URLSearchParams({
+        key: settings.smsApiKey,
+        method: 'balance',
+        format: 'json'
+      });
+      const url = `${settings.smsApiUrl}${settings.smsApiUrl.includes('?') ? '&' : '?'}${params.toString()}`;
+      
+      const res = await fetch(url, { next: { revalidate: 60 } }); // Cache it for 1 minute
+      if (!res.ok) {
+        return { isConfigured: true, error: `SeeMe returned HTTP ${res.status}` };
+      }
+      
+      const data = await res.json().catch(() => null);
+      if (data && data.result === 'OK') {
+        const balanceVal = Number(data.balance);
+        return {
+          isConfigured: true,
+          success: true,
+          balance: balanceVal,
+          currency: data.currency || 'HUF',
+          isLow: balanceVal < 1000
+        };
+      } else {
+        return {
+          isConfigured: true,
+          success: false,
+          error: data?.message || 'Ismeretlen SeeMe API hiba'
+        };
+      }
+    }
+    
+    return { isConfigured: false };
+  } catch (err: any) {
+    console.error('Error fetching SMS balance:', err);
+    return { isConfigured: false, error: err.message };
+  }
+}

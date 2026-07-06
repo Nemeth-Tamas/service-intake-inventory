@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, MessageSquare, Copy, Check, ChevronDown } from 'lucide-react';
-import { sendNotificationEmailAction, sendNotificationSMSAction } from '@/lib/actions';
+import { sendNotificationEmailAction, sendNotificationSMSAction, getSMSBalanceAction } from '@/lib/actions';
 import { NOTIFICATION_TEMPLATES, compileTemplate } from '@/lib/notificationTemplates';
 
 interface Props {
@@ -32,6 +32,7 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
   const [sendingSMS, setSendingSMS] = useState(false);
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
   const [showSMSDropdown, setShowSMSDropdown] = useState(false);
+  const [smsBalance, setSmsBalance] = useState<{ balance: number; currency: string; isLow: boolean } | null>(null);
 
   const contactText = workOrder.customerContact || '';
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
@@ -42,6 +43,26 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
 
   const isEmailConfigured = !!(settings.smtpHost && settings.smtpPort && settings.smtpUser && settings.smtpPass);
   const isSMSConfigured = !!settings.smsApiUrl;
+
+  useEffect(() => {
+    if (isSMSConfigured) {
+      const fetchBalance = async () => {
+        try {
+          const res = await getSMSBalanceAction();
+          if (res && res.success) {
+            setSmsBalance({
+              balance: res.balance!,
+              currency: res.currency!,
+              isLow: res.isLow!
+            });
+          }
+        } catch (err) {
+          console.error('Failed to load SMS balance:', err);
+        }
+      };
+      fetchBalance();
+    }
+  }, [isSMSConfigured]);
 
   const template = NOTIFICATION_TEMPLATES[selectedTemplateKey];
   const compiledText = compileTemplate(template.text, workOrder, settings);
@@ -80,6 +101,19 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
         alert(res.error || 'Sikertelen SMS küldés.');
       } else {
         alert('SMS értesítés sikeresen elküldve!');
+        // Refresh balance
+        try {
+          const balanceRes = await getSMSBalanceAction();
+          if (balanceRes && balanceRes.success) {
+            setSmsBalance({
+              balance: balanceRes.balance!,
+              currency: balanceRes.currency!,
+              isLow: balanceRes.isLow!
+            });
+          }
+        } catch (err) {
+          console.error('Failed to refresh SMS balance:', err);
+        }
       }
     } catch (err: any) {
       alert(err.message || 'Sikertelen SMS küldés.');
@@ -173,43 +207,59 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
 
         {/* SMS action */}
         {hasPhone && (
-          <div className="relative flex w-full">
-            {isSMSConfigured ? (
-              <>
+          <div className="space-y-1.5 w-full">
+            <div className="relative flex w-full">
+              {isSMSConfigured ? (
+                <>
+                  <button
+                    onClick={handleSendSMS}
+                    disabled={sendingSMS}
+                    className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-l-xl font-bold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    <MessageSquare size={16} /> {sendingSMS ? 'Küldés...' : 'SMS Küldése'}
+                  </button>
+                  <button
+                    onClick={() => setShowSMSDropdown(!showSMSDropdown)}
+                    className="bg-purple-700 hover:bg-purple-800 text-white px-3.5 rounded-r-xl transition border-l border-purple-500 flex items-center justify-center cursor-pointer"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                  {showSMSDropdown && (
+                    <div className="absolute right-0 bottom-full mb-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                      <button
+                        onClick={() => {
+                          setShowSMSDropdown(false);
+                          handleCopy();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer border-0 bg-transparent"
+                      >
+                        <Copy size={14} /> Sablon másolása
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <button
-                  onClick={handleSendSMS}
-                  disabled={sendingSMS}
-                  className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-l-xl font-bold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
+                  onClick={handleCopy}
+                  className="w-full flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 py-3 rounded-xl font-bold text-sm transition border border-purple-100 shadow-sm cursor-pointer"
                 >
-                  <MessageSquare size={16} /> {sendingSMS ? 'Küldés...' : 'SMS Küldése'}
+                  <MessageSquare size={16} /> SMS sablon másolása
                 </button>
-                <button
-                  onClick={() => setShowSMSDropdown(!showSMSDropdown)}
-                  className="bg-purple-700 hover:bg-purple-800 text-white px-3.5 rounded-r-xl transition border-l border-purple-500 flex items-center justify-center cursor-pointer"
-                >
-                  <ChevronDown size={16} />
-                </button>
-                {showSMSDropdown && (
-                  <div className="absolute right-0 bottom-full mb-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        setShowSMSDropdown(false);
-                        handleCopy();
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer border-0 bg-transparent"
-                    >
-                      <Copy size={14} /> Sablon másolása
-                    </button>
-                  </div>
+              )}
+            </div>
+            {isSMSConfigured && smsBalance && (
+              <div className="flex justify-between items-center px-1 text-xs text-gray-500">
+                <span>SeeMe egyenleg:</span>
+                {smsBalance.isLow ? (
+                  <span className="text-rose-600 font-extrabold animate-pulse bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 flex items-center gap-1">
+                    ⚠️ Alacsony: {smsBalance.balance} {smsBalance.currency}
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                    {smsBalance.balance} {smsBalance.currency}
+                  </span>
                 )}
-              </>
-            ) : (
-              <button
-                onClick={handleCopy}
-                className="w-full flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 py-3 rounded-xl font-bold text-sm transition border border-purple-100 shadow-sm cursor-pointer"
-              >
-                <MessageSquare size={16} /> SMS sablon másolása
-              </button>
+              </div>
             )}
           </div>
         )}
