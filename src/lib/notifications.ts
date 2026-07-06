@@ -40,6 +40,40 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
   }
 
   const cleanPhone = toPhone.replace(/\s+/g, '');
+
+  if (settings.smsApiUrl.includes('seeme.hu') || settings.smsApiUrl.includes('seememobile.com')) {
+    // Seeme expects numbers in international format without leading + or 00, e.g. 36201234567
+    let seemePhone = cleanPhone.replace(/^\+|^00/, '');
+    if (seemePhone.startsWith('06')) {
+      seemePhone = '36' + seemePhone.substring(2);
+    } else if (/^(20|30|70|50)\d{7}$/.test(seemePhone)) {
+      seemePhone = '36' + seemePhone;
+    }
+
+    const params = new URLSearchParams({
+      key: settings.smsApiKey || '',
+      number: seemePhone,
+      message: message,
+      format: 'json'
+    });
+    if (settings.smsSender) {
+      params.append('sender', settings.smsSender);
+    }
+
+    const url = `${settings.smsApiUrl}${settings.smsApiUrl.includes('?') ? '&' : '?'}${params.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`SeeMe SMS Gateway returned HTTP ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json().catch(() => null);
+    if (data && data.result === 'ERR') {
+      throw new Error(`SeeMe API hiba: ${data.message || 'Ismeretlen hiba'} (Kód: ${data.code})`);
+    }
+    return;
+  }
+
   const payload: any = {
     to: cleanPhone,
     message: message,

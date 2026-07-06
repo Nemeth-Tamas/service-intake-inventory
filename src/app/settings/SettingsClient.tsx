@@ -308,6 +308,9 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                       placeholder="https://api.sms-gateway.com/send"
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      SeeMe.hu használata esetén add meg pontosan ezt: <code>https://seeme.hu/gateway</code>
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">SMS Küldő Neve (Sender ID)</label>
@@ -318,6 +321,9 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                       placeholder="CellnetSzerv"
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Opcionális (pl. <code>Cellnet</code>, előzetesen jóvá kell hagyatni a SeeMe-nél).
+                    </p>
                   </div>
                   <div className="md:col-span-3">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">API Key / Token</label>
@@ -328,6 +334,9 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                       placeholder="••••••••••••••••••••••••••••••••"
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      A SeeMe.hu felületén az "SMS Gateway beállítások" menüpontban létrehozott API kulcs.
+                    </p>
                   </div>
                 </div>
               </div>
