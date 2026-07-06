@@ -32,7 +32,7 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
   const [sendingSMS, setSendingSMS] = useState(false);
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
   const [showSMSDropdown, setShowSMSDropdown] = useState(false);
-  const [smsBalance, setSmsBalance] = useState<{ balance: number; currency: string; isLow: boolean } | null>(null);
+  const [smsBalance, setSmsBalance] = useState<{ balance: number | string; currency: string; isLow: boolean } | null>(null);
 
   const contactText = workOrder.customerContact || '';
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
@@ -249,10 +249,10 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
             </div>
             {isSMSConfigured && smsBalance && (
               <div className="flex justify-between items-center px-1 text-xs text-gray-500">
-                <span>SeeMe egyenleg:</span>
+                <span>SMS egyenleg/státusz:</span>
                 {smsBalance.isLow ? (
                   <span className="text-rose-600 font-extrabold animate-pulse bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 flex items-center gap-1">
-                    ⚠️ Alacsony: {smsBalance.balance} {smsBalance.currency}
+                    ⚠️ {typeof smsBalance.balance === 'number' ? `Alacsony: ${smsBalance.balance} ${smsBalance.currency}` : smsBalance.balance}
                   </span>
                 ) : (
                   <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">

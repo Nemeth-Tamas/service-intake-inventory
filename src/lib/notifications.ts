@@ -53,6 +53,48 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
     }
   }
 
+  if (settings.smsApiUrl.includes('sms.ntsexp.site') || settings.smsApiUrl.includes('3rdparty/v1')) {
+    const [username, password] = (settings.smsApiKey || '').split(':');
+    if (!username || !password) {
+      throw new Error('Az SMSGate hitelesítéshez "username:password" formátum szükséges az API kulcs mezőben.');
+    }
+
+    let formattedPhone = cleanPhone;
+    if (!formattedPhone.startsWith('+')) {
+      if (formattedPhone.startsWith('00')) {
+        formattedPhone = '+' + formattedPhone.substring(2);
+      } else if (formattedPhone.startsWith('06')) {
+        formattedPhone = '+36' + formattedPhone.substring(2);
+      } else if (/^(20|30|70|50)\d{7}$/.test(formattedPhone)) {
+        formattedPhone = '+36' + formattedPhone;
+      } else {
+        formattedPhone = '+' + formattedPhone;
+      }
+    }
+
+    const payload = {
+      phoneNumbers: [formattedPhone],
+      textMessage: {
+        text: cleanMessage
+      }
+    };
+
+    const res = await fetch(settings.smsApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`SMSGate returned HTTP ${res.status}: ${errText}`);
+    }
+    return;
+  }
+
   if (settings.smsApiUrl.includes('bulkgate.com')) {
     const [appId, appToken] = (settings.smsApiKey || '').split(':');
     if (!appId || !appToken) {

@@ -771,6 +771,52 @@ export async function getSMSBalanceAction() {
       return { isConfigured: false };
     }
 
+    if (settings.smsApiUrl.includes('sms.ntsexp.site') || settings.smsApiUrl.includes('3rdparty/v1')) {
+      const [username, password] = (settings.smsApiKey || '').split(':');
+      if (!username || !password) {
+        return { isConfigured: true, error: 'Az SMSGate hitelesítéshez "username:password" formátum szükséges az API kulcs mezőben.' };
+      }
+
+      const baseUrl = settings.smsApiUrl.replace(/\/messages\/?$/, '');
+      const devicesUrl = `${baseUrl}/devices`;
+
+      try {
+        const res = await fetch(devicesUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
+          },
+          next: { revalidate: 60 }
+        });
+
+        if (!res.ok) {
+          return { isConfigured: true, error: `SMSGate returned HTTP ${res.status}` };
+        }
+
+        const data = await res.json().catch(() => null);
+        if (Array.isArray(data)) {
+          const deviceCount = data.length;
+          return {
+            isConfigured: true,
+            success: true,
+            balance: `Eszközök: ${deviceCount} db`,
+            currency: '',
+            isLow: deviceCount === 0
+          };
+        }
+        
+        return {
+          isConfigured: true,
+          success: true,
+          balance: 'Online',
+          currency: '',
+          isLow: false
+        };
+      } catch (err: any) {
+        return { isConfigured: true, error: `Nem sikerült kapcsolódni az SMSGate szerverhez: ${err.message}` };
+      }
+    }
+
     if (settings.smsApiUrl.includes('bulkgate.com')) {
       const [appId, appToken] = (settings.smsApiKey || '').split(':');
       if (!appId || !appToken) {

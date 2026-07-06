@@ -47,8 +47,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const isStatusPage = nextUrl.pathname.startsWith("/status");
       const isAuthPage = nextUrl.pathname.startsWith("/login");
       const isApiAuth = nextUrl.pathname.startsWith("/api/auth");
+      const isWebhook = nextUrl.pathname.startsWith("/api/webhooks");
 
-      if (isApiAuth || isStatusPage) return true;
+      if (isApiAuth || isStatusPage || isWebhook) return true;
       if (isAuthPage) {
         if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
         return true;

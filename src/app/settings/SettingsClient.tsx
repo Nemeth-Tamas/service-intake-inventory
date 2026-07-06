@@ -309,7 +309,7 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      SeeMe.hu: <code>https://seeme.hu/gateway</code> | BulkGate: <code>https://portal.bulkgate.com/api/1.0/simple/transactional</code>
+                      SeeMe.hu: <code>https://seeme.hu/gateway</code> | BulkGate: <code>https://portal.bulkgate.com/api/1.0/simple/transactional</code> | SMSGate: <code>https://sms.ntsexp.site/api/3rdparty/v1/messages</code>
                     </p>
                   </div>
                   <div>
@@ -326,7 +326,7 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                     </p>
                   </div>
                   <div className="md:col-span-3">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">API Key / Token</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">API Key / Token / Credentials</label>
                     <input
                       name="smsApiKey"
                       type="password"
@@ -335,7 +335,7 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-mono text-sm"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      SeeMe API kulcs. BulkGate esetén használd az <code>ApplicationID:ApplicationToken</code> formátumot kettősponttal elválasztva.
+                      SeeMe API kulcs. BulkGate: <code>ApplicationID:ApplicationToken</code> | SMSGate: <code>username:password</code> formátum kettősponttal elválasztva.
                     </p>
                   </div>
                 </div>
