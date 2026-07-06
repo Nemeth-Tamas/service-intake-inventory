@@ -697,57 +697,69 @@ export async function triggerRestoreBackup(formData: FormData) {
 }
 
 export async function sendNotificationEmailAction(workOrderId: string, templateKey: string) {
-  const parsedId = z.string().cuid().parse(workOrderId);
-  const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
+  try {
+    const parsedId = z.string().cuid().parse(workOrderId);
+    const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
 
-  const workOrder = await prisma.workOrder.findUnique({
-    where: { id: parsedId }
-  });
+    const workOrder = await prisma.workOrder.findUnique({
+      where: { id: parsedId }
+    });
 
-  if (!workOrder || !workOrder.customerContact) {
-    throw new Error('Munkalap vagy elérhetőség nem található.');
+    if (!workOrder || !workOrder.customerContact) {
+      return { success: false, error: 'Munkalap vagy elérhetőség nem található.' };
+    }
+
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const match = workOrder.customerContact.match(emailRegex);
+    if (!match) {
+      return { success: false, error: 'Nem található érvényes email cím az ügyfél adatai között.' };
+    }
+    const toEmail = match[0];
+
+    const settings = await getSettings();
+    const { NOTIFICATION_TEMPLATES, compileTemplate, sendEmailNotification } = await import('./notifications');
+    const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
+    const message = compileTemplate(template.text, workOrder, settings);
+
+    await sendEmailNotification(settings, toEmail, `${settings.workshopName} - Értesítés`, message);
+    await logActivity(parsedId, `Email értesítés elküldve (${template.title}) -> ${toEmail}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error sending Email:', err);
+    return { success: false, error: err.message || 'Ismeretlen hiba történt az email küldése során.' };
   }
-
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-  const match = workOrder.customerContact.match(emailRegex);
-  if (!match) {
-    throw new Error('Nem található érvényes email cím az ügyfél adatai között.');
-  }
-  const toEmail = match[0];
-
-  const settings = await getSettings();
-  const { NOTIFICATION_TEMPLATES, compileTemplate, sendEmailNotification } = await import('./notifications');
-  const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
-  const message = compileTemplate(template.text, workOrder, settings);
-
-  await sendEmailNotification(settings, toEmail, `${settings.workshopName} - Értesítés`, message);
-  await logActivity(parsedId, `Email értesítés elküldve (${template.title}) -> ${toEmail}`);
 }
 
 export async function sendNotificationSMSAction(workOrderId: string, templateKey: string) {
-  const parsedId = z.string().cuid().parse(workOrderId);
-  const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
+  try {
+    const parsedId = z.string().cuid().parse(workOrderId);
+    const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
 
-  const workOrder = await prisma.workOrder.findUnique({
-    where: { id: parsedId }
-  });
+    const workOrder = await prisma.workOrder.findUnique({
+      where: { id: parsedId }
+    });
 
-  if (!workOrder || !workOrder.customerContact) {
-    throw new Error('Munkalap vagy elérhetőség nem található.');
+    if (!workOrder || !workOrder.customerContact) {
+      return { success: false, error: 'Munkalap vagy elérhetőség nem található.' };
+    }
+
+    const phoneRegex = /(?:\+?)[0-9\s-]{7,15}/;
+    const match = workOrder.customerContact.match(phoneRegex);
+    if (!match) {
+      return { success: false, error: 'Nem található érvényes telefonszám az ügyfél adatai között.' };
+    }
+    const toPhone = match[0].replace(/\s+/g, '');
+
+    const settings = await getSettings();
+    const { NOTIFICATION_TEMPLATES, compileTemplate, sendSMSNotification } = await import('./notifications');
+    const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
+    const message = compileTemplate(template.text, workOrder, settings);
+
+    await sendSMSNotification(settings, toPhone, message);
+    await logActivity(parsedId, `SMS értesítés elküldve (${template.title}) -> ${toPhone}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error sending SMS:', err);
+    return { success: false, error: err.message || 'Ismeretlen hiba történt az SMS küldése során.' };
   }
-
-  const phoneRegex = /(?:\+?)[0-9\s-]{7,15}/;
-  const match = workOrder.customerContact.match(phoneRegex);
-  if (!match) {
-    throw new Error('Nem található érvényes telefonszám az ügyfél adatai között.');
-  }
-  const toPhone = match[0].replace(/\s+/g, '');
-
-  const settings = await getSettings();
-  const { NOTIFICATION_TEMPLATES, compileTemplate, sendSMSNotification } = await import('./notifications');
-  const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
-  const message = compileTemplate(template.text, workOrder, settings);
-
-  await sendSMSNotification(settings, toPhone, message);
-  await logActivity(parsedId, `SMS értesítés elküldve (${template.title}) -> ${toPhone}`);
 }

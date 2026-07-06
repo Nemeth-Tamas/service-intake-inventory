@@ -59,8 +59,12 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
   const handleSendEmail = async () => {
     setSendingEmail(true);
     try {
-      await sendNotificationEmailAction(workOrder.id, selectedTemplateKey);
-      alert('Email értesítés sikeresen elküldve!');
+      const res = await sendNotificationEmailAction(workOrder.id, selectedTemplateKey);
+      if (res && !res.success) {
+        alert(res.error || 'Sikertelen email küldés.');
+      } else {
+        alert('Email értesítés sikeresen elküldve!');
+      }
     } catch (err: any) {
       alert(err.message || 'Sikertelen email küldés.');
     } finally {
@@ -71,8 +75,12 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
   const handleSendSMS = async () => {
     setSendingSMS(true);
     try {
-      await sendNotificationSMSAction(workOrder.id, selectedTemplateKey);
-      alert('SMS értesítés sikeresen elküldve!');
+      const res = await sendNotificationSMSAction(workOrder.id, selectedTemplateKey);
+      if (res && !res.success) {
+        alert(res.error || 'Sikertelen SMS küldés.');
+      } else {
+        alert('SMS értesítés sikeresen elküldve!');
+      }
     } catch (err: any) {
       alert(err.message || 'Sikertelen SMS küldés.');
     } finally {
