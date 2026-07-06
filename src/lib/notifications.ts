@@ -41,7 +41,17 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
 
   const cleanPhone = toPhone.replace(/\s+/g, '');
   // Strip accents to ensure GSM-7 encoding (160 character limit per SMS instead of 70 Unicode UCS-2 limit)
-  const cleanMessage = stripHungarianAccents(message);
+  let cleanMessage = stripHungarianAccents(message);
+
+  if (cleanMessage.length > 160) {
+    // If the message exceeds 160 characters, dynamically remove the tracking link and its description
+    cleanMessage = cleanMessage.replace(/[\s\.]*(?:[a-zA-Z\s]+:)?\s*https?:\/\/\S+/gi, '');
+    
+    // Fallback: If it's still too long, truncate it
+    if (cleanMessage.length > 160) {
+      cleanMessage = cleanMessage.substring(0, 157) + '...';
+    }
+  }
 
   if (settings.smsApiUrl.includes('seeme.hu') || settings.smsApiUrl.includes('seememobile.com')) {
     // Seeme expects numbers in international format without leading + or 00, e.g. 36201234567
