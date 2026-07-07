@@ -18,7 +18,7 @@ import RealTimeListener from '@/components/RealTimeListener';
 import SignatureTrigger from '@/components/SignatureTrigger';
 import DeclarationPDFButton from '@/components/DeclarationPDFButton';
 import CustomerNotifications from '@/components/CustomerNotifications';
-import { addNote, getSettings } from '@/lib/actions';
+import { addNote, getSettings, getSmsGateways } from '@/lib/actions';
 import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, FileText, PenTool } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,7 +26,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function TrackingPage({ params }: { params: { id: string } }) {
   const { id } = await params;
-  const settings = await getSettings();
+  const [settings, smsGateways] = await Promise.all([
+    getSettings(),
+    getSmsGateways()
+  ]);
   
   const workOrder = await prisma.workOrder.findUnique({
     where: { id },
@@ -232,7 +235,7 @@ export default async function TrackingPage({ params }: { params: { id: string } 
             )}
           </section>
 
-          <CustomerNotifications workOrder={workOrder} settings={settings} />
+          <CustomerNotifications workOrder={workOrder} settings={settings} smsGateways={smsGateways} />
 
           <div className="bg-white border p-6 rounded-2xl shadow-sm flex flex-col items-center justify-center space-y-4">
             <QRCodeDisplay value={absoluteUrl} />

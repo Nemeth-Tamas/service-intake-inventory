@@ -23,9 +23,16 @@ interface Props {
     smsSender: string | null;
     workshopName: string;
   };
+  smsGateways?: {
+    id: string;
+    name: string;
+    smsApiUrl: string;
+    smsApiKey: string;
+    smsSender: string | null;
+  }[];
 }
 
-export default function CustomerNotifications({ workOrder, settings }: Props) {
+export default function CustomerNotifications({ workOrder, settings, smsGateways = [] }: Props) {
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<keyof typeof NOTIFICATION_TEMPLATES>('intake');
   const [copied, setCopied] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -93,10 +100,10 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
     }
   };
 
-  const handleSendSMS = async () => {
+  const handleSendSMS = async (gatewayId?: string) => {
     setSendingSMS(true);
     try {
-      const res = await sendNotificationSMSAction(workOrder.id, selectedTemplateKey);
+      const res = await sendNotificationSMSAction(workOrder.id, selectedTemplateKey, gatewayId);
       if (res && !res.success) {
         alert(res.error || 'Sikertelen SMS küldés.');
       } else {
@@ -209,23 +216,24 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
         {hasPhone && (
           <div className="space-y-1.5 w-full">
             <div className="relative flex w-full">
-              {isSMSConfigured ? (
+              {(isSMSConfigured || smsGateways.length > 0) ? (
                 <>
                   <button
-                    onClick={handleSendSMS}
-                    disabled={sendingSMS}
+                    onClick={() => isSMSConfigured && handleSendSMS()}
+                    disabled={sendingSMS || !isSMSConfigured}
                     className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-l-xl font-bold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
                   >
-                    <MessageSquare size={16} /> {sendingSMS ? 'Küldés...' : 'SMS Küldése'}
+                    <MessageSquare size={16} /> {sendingSMS ? 'Küldés...' : (isSMSConfigured ? 'SMS Küldése' : 'Válassz átjárót')}
                   </button>
                   <button
                     onClick={() => setShowSMSDropdown(!showSMSDropdown)}
-                    className="bg-purple-700 hover:bg-purple-800 text-white px-3.5 rounded-r-xl transition border-l border-purple-500 flex items-center justify-center cursor-pointer"
+                    disabled={sendingSMS}
+                    className="bg-purple-700 hover:bg-purple-800 text-white px-3.5 rounded-r-xl transition border-l border-purple-500 flex items-center justify-center cursor-pointer disabled:opacity-50"
                   >
                     <ChevronDown size={16} />
                   </button>
                   {showSMSDropdown && (
-                    <div className="absolute right-0 bottom-full mb-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                    <div className="absolute right-0 bottom-full mb-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100">
                       <button
                         onClick={() => {
                           setShowSMSDropdown(false);
@@ -235,6 +243,19 @@ export default function CustomerNotifications({ workOrder, settings }: Props) {
                       >
                         <Copy size={14} /> Sablon másolása
                       </button>
+
+                      {smsGateways.map((gw) => (
+                        <button
+                          key={gw.id}
+                          onClick={() => {
+                            setShowSMSDropdown(false);
+                            handleSendSMS(gw.id);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 hover:bg-purple-50 flex items-center gap-2 cursor-pointer border-0 bg-transparent"
+                        >
+                          <MessageSquare size={14} className="text-purple-500" /> Küldés: {gw.name}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </>

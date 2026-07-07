@@ -1,6 +1,6 @@
 'use client';
 
-import { uploadLogo, deleteLogo, runCleanup, updateSettings, updateRepresentativeSignature, triggerManualBackup, triggerRestoreBackup } from '@/lib/actions';
+import { uploadLogo, deleteLogo, runCleanup, updateSettings, updateRepresentativeSignature, triggerManualBackup, triggerRestoreBackup, createSmsGateway, deleteSmsGateway } from '@/lib/actions';
 import Link from 'next/link';
 import { ArrowLeft, Save, Globe, Upload, Trash2, ShieldAlert, Sparkles, RefreshCw, Database, HardDrive, UserCheck, PenTool, Eraser, Check } from 'lucide-react';
 import { useState, useTransition, useRef } from 'react';
@@ -8,7 +8,7 @@ import Image from 'next/image';
 import RichTextEditor from '@/components/RichTextEditor';
 import SignaturePad from 'react-signature-canvas';
 
-export default function SettingsClient({ settings, storage }: { settings: any, storage: any }) {
+export default function SettingsClient({ settings, storage, smsGateways = [] }: { settings: any, storage: any, smsGateways?: any[] }) {
   const [isPending, startTransition] = useTransition();
   const [cleanupResult, setCleanupCount] = useState<number | null>(null);
   const [declarationTemplate, setDeclarationTemplate] = useState(settings.declarationTemplate);
@@ -356,6 +356,147 @@ export default function SettingsClient({ settings, storage }: { settings: any, s
               <Save size={20} /> Összes Beállítás Mentése
             </button>
           </form>
+        </div>
+
+        {/* Additional SMS Gateways Card */}
+        <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100 space-y-6">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+            <Database className="text-purple-600" /> További SMS Gateway-ek
+          </h2>
+          <p className="text-xs text-gray-500">
+            Itt adhatsz hozzá további SMS küldési átjárókat (pl. Sendgate vagy saját telefonszám). Küldéskor a megfelelő munkalap értesítési felületén választhatod ki őket.
+          </p>
+
+          {/* Existing custom gateways list */}
+          <div className="space-y-3">
+            {smsGateways && smsGateways.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-gray-500">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-50 font-bold">
+                    <tr>
+                      <th className="px-4 py-3">Név</th>
+                      <th className="px-4 py-3">API URL</th>
+                      <th className="px-4 py-3">Küldő (Sender ID)</th>
+                      <th className="px-4 py-3 text-right">Művelet</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {smsGateways.map((gw: any) => (
+                      <tr key={gw.id} className="hover:bg-gray-50 text-gray-700">
+                        <td className="px-4 py-3 font-semibold text-gray-900">{gw.name}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{gw.smsApiUrl}</td>
+                        <td className="px-4 py-3 text-xs">{gw.smsSender || '-'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm(`Biztosan törölni szeretnéd a(z) "${gw.name}" átjárót?`)) return;
+                              startTransition(async () => {
+                                const res = await deleteSmsGateway(gw.id);
+                                if (res.success) {
+                                  alert('Átjáró törölve.');
+                                } else {
+                                  alert(res.error || 'Hiba történt.');
+                                }
+                              });
+                            }}
+                            disabled={isPending}
+                            className="text-red-600 hover:text-red-800 transition p-1 cursor-pointer disabled:opacity-50 border-0 bg-transparent"
+                            title="Törlés"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded-xl text-center">Nincsenek további SMS átjárók beállítva.</p>
+            )}
+          </div>
+
+          {/* Form to add a new gateway */}
+          <div className="pt-4 border-t border-gray-100 space-y-4">
+            <h3 className="text-sm font-bold text-gray-800">Új SMS Átjáró Hozzáadása</h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const target = e.currentTarget;
+                const fd = new FormData(target);
+                const name = fd.get('name') as string;
+                const url = fd.get('smsApiUrl') as string;
+                const key = fd.get('smsApiKey') as string;
+                const sender = fd.get('smsSender') as string;
+
+                if (!name || !url || !key) {
+                  alert('Kérjük, töltsd ki a Megnevezés, API URL és API kulcs mezőket.');
+                  return;
+                }
+
+                startTransition(async () => {
+                  const res = await createSmsGateway(name, url, key, sender || undefined);
+                  if (res.success) {
+                    alert('Új SMS átjáró hozzáadva.');
+                    target.reset();
+                  } else {
+                    alert(res.error || 'Sikertelen mentés.');
+                  }
+                });
+              }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Megnevezés (pl. Sendgate)</label>
+                <input
+                  name="name"
+                  type="text"
+                  placeholder="Átjáró neve"
+                  required
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">SMS Küldő Neve (Sender ID)</label>
+                <input
+                  name="smsSender"
+                  type="text"
+                  placeholder="CellnetSzerv (opcionális)"
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-gray-50"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">SMS Gateway API URL</label>
+                <input
+                  name="smsApiUrl"
+                  type="url"
+                  placeholder="https://api.sms-gateway.com/send"
+                  required
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono bg-gray-50"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">API Key / Token / Credentials</label>
+                <input
+                  name="smsApiKey"
+                  type="password"
+                  placeholder="API kulcs vagy username:password"
+                  required
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono bg-gray-50"
+                />
+              </div>
+              <div className="md:col-span-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold text-sm transition shadow-md disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Save size={16} /> Új Átjáró Mentése
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
 
         {/* Logo Upload */}

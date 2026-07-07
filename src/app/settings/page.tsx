@@ -1,13 +1,14 @@
-import { getSettings, getStorageUsage } from '@/lib/actions';
+import { getSettings, getStorageUsage, getSmsGateways } from '@/lib/actions';
 import SettingsClient from './SettingsClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const [settings, storage] = await Promise.all([
+  const [settings, storage, smsGateways] = await Promise.all([
     getSettings(),
-    getStorageUsage()
+    getStorageUsage(),
+    getSmsGateways()
   ]);
 
-  return <SettingsClient settings={settings} storage={storage} />;
+  return <SettingsClient settings={settings} storage={storage} smsGateways={smsGateways} />;
 }

@@ -110,7 +110,11 @@ export async function sendSMSNotification(settings: any, toPhone: string, messag
     };
 
     if (settings.smsSender) {
-      if (/^\d+$/.test(settings.smsSender)) {
+      if (settings.smsSender.includes(':')) {
+        const [type, val] = settings.smsSender.split(':');
+        payload.sender_id = type.trim();
+        payload.sender_id_value = val.trim();
+      } else if (/^\d+$/.test(settings.smsSender)) {
         payload.sender_id = 'gSystem';
         payload.sender_id_value = settings.smsSender;
       } else {

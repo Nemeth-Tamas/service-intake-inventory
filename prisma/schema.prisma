@@ -114,3 +114,13 @@ model Photo {
   description String?
   createdAt   DateTime  @default(now())
 }
+
+model SmsGateway {
+  id        String   @id @default(cuid())
+  name      String
+  smsApiUrl String
+  smsApiKey String
+  smsSender String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

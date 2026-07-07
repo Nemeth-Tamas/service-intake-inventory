@@ -730,7 +730,7 @@ export async function sendNotificationEmailAction(workOrderId: string, templateK
   }
 }
 
-export async function sendNotificationSMSAction(workOrderId: string, templateKey: string) {
+export async function sendNotificationSMSAction(workOrderId: string, templateKey: string, gatewayId?: string) {
   try {
     const parsedId = z.string().cuid().parse(workOrderId);
     const parsedTemplateKey = z.enum(['intake', 'diagnostic', 'waiting_parts', 'ready', 'unrepairable', 'warranty_expiring']).parse(templateKey);
@@ -755,8 +755,30 @@ export async function sendNotificationSMSAction(workOrderId: string, templateKey
     const template = NOTIFICATION_TEMPLATES[parsedTemplateKey];
     const message = compileTemplate(template.text, workOrder, settings);
 
-    await sendSMSNotification(settings, toPhone, message);
-    await logActivity(parsedId, `SMS értesítés elküldve (${template.title}) -> ${toPhone}`);
+    let activeSettings = {
+      smsApiUrl: settings.smsApiUrl,
+      smsApiKey: settings.smsApiKey,
+      smsSender: settings.smsSender
+    };
+    let gatewayName = 'Alapértelmezett';
+
+    if (gatewayId && gatewayId !== 'default') {
+      const gateway = await prisma.smsGateway.findUnique({
+        where: { id: gatewayId }
+      });
+      if (!gateway) {
+        return { success: false, error: 'A kiválasztott SMS Gateway nem található.' };
+      }
+      activeSettings = {
+        smsApiUrl: gateway.smsApiUrl,
+        smsApiKey: gateway.smsApiKey,
+        smsSender: gateway.smsSender
+      };
+      gatewayName = gateway.name;
+    }
+
+    await sendSMSNotification(activeSettings, toPhone, message);
+    await logActivity(parsedId, `SMS értesítés elküldve (${template.title}) -> ${toPhone} (${gatewayName} átjárón át)`);
     return { success: true };
   } catch (err: any) {
     console.error('Error sending SMS:', err);
@@ -905,5 +927,47 @@ export async function getSMSBalanceAction() {
   } catch (err: any) {
     console.error('Error fetching SMS balance:', err);
     return { isConfigured: false, error: err.message };
+  }
+}
+
+export async function getSmsGateways() {
+  try {
+    return await prisma.smsGateway.findMany({
+      orderBy: { createdAt: 'asc' }
+    });
+  } catch (err) {
+    console.error('Error fetching SMS gateways:', err);
+    return [];
+  }
+}
+
+export async function createSmsGateway(name: string, smsApiUrl: string, smsApiKey: string, smsSender?: string) {
+  try {
+    const gateway = await prisma.smsGateway.create({
+      data: {
+        name,
+        smsApiUrl,
+        smsApiKey,
+        smsSender
+      }
+    });
+    revalidatePath('/settings');
+    return { success: true, gateway };
+  } catch (err: any) {
+    console.error('Error creating SMS gateway:', err);
+    return { success: false, error: err.message || 'Sikertelen mentés.' };
+  }
+}
+
+export async function deleteSmsGateway(id: string) {
+  try {
+    await prisma.smsGateway.delete({
+      where: { id }
+    });
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error deleting SMS gateway:', err);
+    return { success: false, error: err.message || 'Sikertelen törlés.' };
   }
 }
