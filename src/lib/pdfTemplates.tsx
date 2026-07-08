@@ -1,14 +1,21 @@
 import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import path from 'path';
+import fs from 'fs';
 
 // Register Roboto font to support Hungarian accent characters (Ő, Ű)
-Font.register({
-  family: 'Roboto',
-  fonts: [
-    { src: path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf'), fontWeight: 'normal' },
-    { src: path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf'), fontWeight: 'bold' }
-  ]
-});
+try {
+  const regularFont = fs.readFileSync(path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf'));
+  const boldFont = fs.readFileSync(path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf'));
+  Font.register({
+    family: 'Roboto',
+    fonts: [
+      { src: `data:font/ttf;base64,${regularFont.toString('base64')}`, fontWeight: 'normal' },
+      { src: `data:font/ttf;base64,${boldFont.toString('base64')}`, fontWeight: 'bold' }
+    ]
+  });
+} catch (error) {
+  console.error('Error registering Roboto font:', error);
+}
 
 const styles = StyleSheet.create({
   page: {
