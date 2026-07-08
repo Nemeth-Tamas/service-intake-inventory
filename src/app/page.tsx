@@ -96,14 +96,6 @@ export default async function Home({
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Link 
-              href="/sign" 
-              className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl border border-gray-100 bg-white relative group"
-              title="Aláírási Várólista"
-            >
-              <PenTool size={24} />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
             <DashboardQRTrigger />
             <Link 
               href="/settings" 

@@ -18,8 +18,12 @@ import RealTimeListener from '@/components/RealTimeListener';
 import SignatureTrigger from '@/components/SignatureTrigger';
 import DeclarationPDFButton from '@/components/DeclarationPDFButton';
 import CustomerNotifications from '@/components/CustomerNotifications';
+import ConditionVideoUpload from '@/components/ConditionVideoUpload';
+import ConditionVideoGallery from '@/components/ConditionVideoGallery';
+import ConditionAcceptanceTrigger from '@/components/ConditionAcceptanceTrigger';
+import ConditionAcceptancePDFButton from '@/components/ConditionAcceptancePDFButton';
 import { addNote, getSettings, getSmsGateways } from '@/lib/actions';
-import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, FileText, PenTool } from 'lucide-react';
+import { MessageSquare, Tag, User, Info, Clock, Image as ImageIcon, Download, ArrowLeft, Calendar, FileText, PenTool, Video } from 'lucide-react';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +41,8 @@ export default async function TrackingPage({ params }: { params: { id: string } 
       notes: { orderBy: { createdAt: 'desc' } }, 
       photos: { orderBy: { createdAt: 'desc' } },
       statusHistory: { orderBy: { createdAt: 'desc' } },
-      lineItems: { orderBy: { createdAt: 'desc' } }
+      lineItems: { orderBy: { createdAt: 'desc' } },
+      conditionVideos: { orderBy: { createdAt: 'desc' } },
     },
   });
 
@@ -218,6 +223,16 @@ export default async function TrackingPage({ params }: { params: { id: string } 
               <PhotoGallery photos={workOrder.photos} workOrderId={workOrder.id} />
             )}
           </section>
+
+          <section className="bg-white border p-6 rounded-2xl shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b pb-4">
+              <h2 className="flex items-center gap-2 font-bold text-xl text-gray-800">
+                <Video size={24} className="text-indigo-500" /> Átvételi állapot videó
+              </h2>
+              <ConditionVideoUpload workOrderId={workOrder.id} />
+            </div>
+            <ConditionVideoGallery videos={workOrder.conditionVideos} workOrderId={workOrder.id} />
+          </section>
         </div>
 
         <aside className="space-y-6">
@@ -234,6 +249,13 @@ export default async function TrackingPage({ params }: { params: { id: string } 
               <DeclarationPDFButton workOrder={workOrder} />
             )}
           </section>
+
+          <div className="space-y-3">
+            <ConditionAcceptanceTrigger workOrder={workOrder} />
+            {workOrder.conditionAcceptedAt && (
+              <ConditionAcceptancePDFButton workOrder={workOrder} />
+            )}
+          </div>
 
           <CustomerNotifications workOrder={workOrder} settings={settings} smsGateways={smsGateways} />
 

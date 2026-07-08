@@ -48,8 +48,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const isAuthPage = nextUrl.pathname.startsWith("/login");
       const isApiAuth = nextUrl.pathname.startsWith("/api/auth");
       const isWebhook = nextUrl.pathname.startsWith("/api/webhooks") || nextUrl.pathname.startsWith("/webhook");
+      const isConditionAcceptance = nextUrl.pathname.startsWith("/condition-acceptance");
+      const isSignDetailPage = nextUrl.pathname.startsWith("/sign/");
 
-      if (isApiAuth || isStatusPage || isWebhook) return true;
+      if (isApiAuth || isStatusPage || isWebhook || isConditionAcceptance || isSignDetailPage) return true;
       if (isAuthPage) {
         if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
         return true;

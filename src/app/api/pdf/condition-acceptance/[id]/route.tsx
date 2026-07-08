@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
-import { WorkOrderDocument } from '@/lib/pdfTemplates';
+import { ConditionAcceptanceDocument } from '@/lib/pdfTemplates';
 import { getSettings } from '@/lib/actions';
 import { z } from 'zod';
 import path from 'path';
@@ -20,16 +20,17 @@ export async function GET(
     const workOrder = await prisma.workOrder.findUnique({
       where: { id: workOrderId },
       include: {
-        notes: { orderBy: { createdAt: 'desc' } },
         photos: { orderBy: { createdAt: 'desc' } },
-        statusHistory: { orderBy: { createdAt: 'desc' } },
-        lineItems: { orderBy: { createdAt: 'desc' } },
         conditionVideos: { orderBy: { createdAt: 'desc' } },
       }
     });
 
     if (!workOrder) {
       return new NextResponse('Munkalap nem található', { status: 404 });
+    }
+
+    if (!workOrder.conditionAcceptedAt) {
+      return new NextResponse('Ez az állapotnyilatkozat még nincs aláírva az ügyfél által.', { status: 400 });
     }
 
     const settings = await getSettings();
@@ -55,7 +56,7 @@ export async function GET(
       }
     }
 
-    // Determine which media to use (snapshot if signed, otherwise current)
+    // Determine which media to use (must prefer snapshot for historical accuracy)
     let snapshotMedia: { videos: any[]; photos: any[] } | null = null;
     if (workOrder.conditionAcceptanceMediaSnapshot) {
       try {
@@ -81,7 +82,7 @@ export async function GET(
             };
           }
         } catch (err) {
-          console.error(`Failed to convert WebP to JPEG for PDF: ${photo.filePath}`, err);
+          console.error(`Failed to convert WebP photo to JPEG for PDF: ${photo.filePath}`, err);
         }
         return { ...photo, base64Src: null };
       })
@@ -121,17 +122,17 @@ export async function GET(
     };
 
     const buffer = await renderToBuffer(
-      <WorkOrderDocument workOrder={workOrderForPdf} settings={settingsForPdf} />
+      <ConditionAcceptanceDocument workOrder={workOrderForPdf} settings={settingsForPdf} />
     );
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="munkalap-${workOrder.id.slice(-6).toUpperCase()}.pdf"`,
+        'Content-Disposition': `inline; filename="allapot-nyilatkozat-${workOrder.id.slice(-6).toUpperCase()}.pdf"`,
       },
     });
   } catch (error) {
-    console.error('PDF generation error:', error);
+    console.error('Condition Acceptance PDF generation error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

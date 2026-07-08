@@ -35,6 +35,30 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: any
       return num.toLocaleString('hu-HU').replace(/\u00a0/g, ' ') + ' Ft';
     };
 
+    const formatDateShort = (d: any) => {
+      if (!d) return '';
+      const date = new Date(d);
+      return date.toLocaleDateString('hu-HU') + ' ' + date.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const hasVideos = workOrder.conditionVideos && workOrder.conditionVideos.length > 0;
+    const hasPhotos = workOrder.photos && workOrder.photos.length > 0;
+
+    const conditionStatusHtml = `
+      <div class="section divider">
+        <div class="row"><b>Átvételi állapot:</b> ${workOrder.conditionAcceptedAt ? 'ELFOGADVA' : 'NINCS ALÁÍRVA'}</div>
+        ${workOrder.conditionAcceptedAt ? `<div class="row">Aláírva: ${formatDateShort(workOrder.conditionAcceptedAt)}</div>` : ''}
+        <div class="row">Videó dokumentáció: ${hasVideos ? 'VAN' : 'NINCS'}</div>
+        <div class="row">Fotó dokumentáció: ${hasPhotos ? 'VAN' : 'NINCS'}</div>
+        ${hasVideos ? `
+          <div class="row" style="margin-top: 1mm;">
+            Állapotvideók: ${workOrder.conditionVideos.length} db<br/>
+            ${workOrder.conditionVideos[0].sha256 ? `Videó hash: ${workOrder.conditionVideos[0].sha256.slice(0, 12)}...` : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
     const contentHtml = mode === 'ticket' ? `
       <div class="section">
         <div class="row"><b>Hiba:</b></div>
@@ -48,7 +72,8 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: any
           </div>
         </div>
       ` : ''}
-      <div class="section divider" style="text-align: center; font-size: 9pt; margin-top: 5mm;">
+      ${conditionStatusHtml}
+      <div class="section divider" style="text-align: center; font-size: 9pt; margin-top: 3mm;">
         ${workOrder.signatureData ? '✓ Nyilatkozat elfogadva és aláírva.' : '⚠ Nyilatkozat még nincs aláírva!'}
       </div>
     ` : `

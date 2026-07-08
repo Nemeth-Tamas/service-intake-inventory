@@ -37,6 +37,12 @@ model WorkOrder {
   signatureData         String?   // Base64 encoded signature image
   signedAt              DateTime?
   signedDeclarationText String?   // Snapshot of the declaration text at the time of signing
+
+  conditionVideos                  ConditionVideo[]
+  conditionAcceptedAt              DateTime?
+  conditionAcceptanceSignature     String?
+  conditionAcceptanceText          String?
+  conditionAcceptanceMediaSnapshot String?
 }
 
 model LineItem {
@@ -61,6 +67,11 @@ model Settings {
   googleReviewUrl     String?
   declarationTemplate String  @default("Alulírott ügyfél kijelentem, hogy a szolgáltatás megkezdése előtt tájékoztatást kaptam arról, hogy személyes adataimról biztonsági mentést kell készítenem. Az üzlet minden ésszerű lépést megtesz az adatok védelme érdekében, de nem garantálja a teljes körű helyreállítást, és nem vállal felelősséget az adatvesztésért. Hozzájárulok a készülék állapotának fotózásához és a mentett fájlok vírusellenőrzéséhez.")
   representativeSignature String? // Base64 signature of the workshop representative
+
+  // Condition Acceptance Fields
+  conditionAcceptanceTemplate String @default("Alulírott ügyfél kijelentem, hogy a készülék átvételkori állapotáról készült fotókat és/vagy videófelvételt megtekintettem, azok a készülék általam ismert átvételkori állapotát tükrözik. Tudomásul veszem, hogy a szerviz a készülék átvételkori sérüléseit, tartozékait és működési állapotát e dokumentáció alapján rögzíti.")
+  conditionVideoRetentionDays Int @default(180)
+  preserveAcceptedConditionVideos Boolean @default(true)
 
   // Backup configurations
   backupInterval      String  @default("none") // none, daily, weekly
@@ -123,4 +134,21 @@ model SmsGateway {
   smsSender String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ConditionVideo {
+  id                String    @id @default(cuid())
+  workOrder         WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId       String
+  filePath          String
+  thumbnailPath     String?
+  originalFileName  String?
+  durationSeconds   Int?
+  sizeBytes         Int?
+  codec             String?
+  width             Int?
+  height            Int?
+  sha256            String?
+  thumbnailSha256   String?
+  createdAt         DateTime @default(now())
 }

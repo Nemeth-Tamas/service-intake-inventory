@@ -87,10 +87,28 @@ export const SettingsSchema = z.object({
   smsApiUrl: z.preprocess(urlPreprocessor, z.string().url('Az SMS API URL formátuma érvénytelen').or(z.literal('')).nullish().transform(val => val || null)),
   smsApiKey: z.string().trim().nullish().transform(val => val || null),
   smsSender: z.string().trim().nullish().transform(val => val || null),
+  conditionAcceptanceTemplate: z.string().trim().max(5000).optional(),
+  conditionVideoRetentionDays: z.preprocess((val) => {
+    if (typeof val === 'number') return val;
+    if (val === null || val === undefined || val === '') return 180;
+    const p = parseInt(val as string);
+    return isNaN(p) ? 180 : p;
+  }, z.number().int().min(0, 'A megőrzési idő nem lehet negatív')),
+  preserveAcceptedConditionVideos: z.preprocess((val) => {
+    if (typeof val === 'boolean') return val;
+    if (val === 'true' || val === '1') return true;
+    if (val === 'false' || val === '0') return false;
+    return true;
+  }, z.boolean()).default(true),
 });
 
 export const SignatureSchema = z.object({
   workOrderId: z.string().cuid(),
+  signatureData: z.string().min(1, 'Az aláírás nem lehet üres'),
+});
+
+export const ConditionAcceptanceSchema = z.object({
+  workOrderId: z.string().cuid('A munkalap azonosító formátuma érvénytelen'),
   signatureData: z.string().min(1, 'Az aláírás nem lehet üres'),
 });
 
@@ -105,4 +123,22 @@ export const PhotoUploadSchema = z.object({
       const extension = file.name.split('.').pop()?.toLowerCase();
       return ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp'].includes(extension || '');
     }, 'Csak képfájlok tölthetők fel (JPG, PNG, HEIC, WEBP)'),
+});
+
+export const ConditionVideoUploadSchema = z.object({
+  workOrderId: z.string().cuid('A munkalap azonosító formátuma érvénytelen'),
+  file: z.any()
+    .refine((file) => {
+      return file && typeof file === 'object' && 'size' in file && file.size > 0;
+    }, 'A fájl nem lehet üres')
+    .refine((file) => {
+      if (!file || !('name' in file)) return false;
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      return ['mp4', 'mov', 'webm'].includes(extension || '');
+    }, 'Csak videófájlok tölthetők fel (MP4, MOV, WEBM)')
+    .refine((file) => {
+      if (!file || !('size' in file)) return false;
+      const maxSize = 250 * 1024 * 1024; // 250 MB
+      return file.size <= maxSize;
+    }, 'A videófájl mérete meghaladja a megengedett 250 MB limitet'),
 });

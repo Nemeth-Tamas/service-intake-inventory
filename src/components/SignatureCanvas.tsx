@@ -33,7 +33,7 @@ export default function SignatureCanvas({ workOrderId, customerName, declaration
       const data = sigPad.current?.getTrimmedCanvas().toDataURL('image/png')
       if (data) {
         await saveSignature(workOrderId, data)
-        router.push('/sign?success=true')
+        router.push(`/t/${workOrderId}`)
       }
     } catch (error) {
       console.error('Failed to save signature:', error)

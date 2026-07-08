@@ -57,7 +57,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
-    flex: 1,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -276,7 +275,7 @@ export const WorkOrderDocument = ({ workOrder, settings }: WorkOrderDocProps) =>
 
         {/* Grid: Client & Device */}
         <View style={styles.grid}>
-          <View style={styles.card}>
+          <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.cardTitle}>Ügyfél Adatok</Text>
             <View style={styles.cardRow}>
               <Text style={styles.label}>Név:</Text>
@@ -287,7 +286,7 @@ export const WorkOrderDocument = ({ workOrder, settings }: WorkOrderDocProps) =>
               <Text style={styles.value}>{workOrder.customerContact || '-'}</Text>
             </View>
           </View>
-          <View style={styles.card}>
+          <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.cardTitle}>Eszköz Adatok</Text>
             <View style={styles.cardRow}>
               <Text style={styles.label}>Típus:</Text>
@@ -327,7 +326,7 @@ export const WorkOrderDocument = ({ workOrder, settings }: WorkOrderDocProps) =>
                 <Text style={[styles.tableCellHeader, { width: '60%' }]}>Státusz</Text>
               </View>
               {workOrder.statusHistory.map((log: any) => (
-                <View key={log.id} style={styles.tableRow}>
+                <View key={log.id} style={styles.tableRow} wrap={false}>
                   <Text style={[styles.tableCell, { width: '40%' }]}>{formatDate(log.createdAt)}</Text>
                   <Text style={[styles.tableCell, { width: '60%', fontWeight: 'bold' }]}>{log.status}</Text>
                 </View>
@@ -341,7 +340,7 @@ export const WorkOrderDocument = ({ workOrder, settings }: WorkOrderDocProps) =>
           <View style={styles.notesSection}>
             <Text style={styles.sectionTitle}>Munkalap Jegyzetek</Text>
             {workOrder.notes.map((note: any) => (
-              <View key={note.id} style={styles.noteItem}>
+              <View key={note.id} style={styles.noteItem} wrap={false}>
                 <Text style={styles.noteMeta}>{formatDate(note.createdAt)}</Text>
                 <Text>{note.text}</Text>
               </View>
@@ -364,7 +363,7 @@ export const WorkOrderDocument = ({ workOrder, settings }: WorkOrderDocProps) =>
           <View style={styles.photosContainer}>
             {workOrder.photos.map((p: any) => {
               return (
-                <View key={p.id} style={styles.photoCard}>
+                <View key={p.id} style={styles.photoCard} wrap={false}>
                   {p.base64Src ? (
                     <Image src={p.base64Src} style={styles.photoImg} />
                   ) : null}
@@ -373,6 +372,146 @@ export const WorkOrderDocument = ({ workOrder, settings }: WorkOrderDocProps) =>
                 </View>
               );
             })}
+          </View>
+        </Page>
+      )}
+
+      {/* Render Condition Acceptance if signed */}
+      {workOrder.conditionAcceptedAt && (
+        <Page size="A4" style={styles.page}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              {logoUrl ? (
+                <Image src={logoUrl} style={styles.logo} />
+              ) : null}
+              <View>
+                <Text style={styles.headerTitle}>ÁTVÉTELI ÁLLAPOT NYILATKOZAT</Text>
+                <Text style={styles.headerSub}>{settings.workshopName}</Text>
+              </View>
+            </View>
+            <View style={styles.headerMeta}>
+              <Text>Munkalap: {workOrder.id.slice(-6).toUpperCase()}</Text>
+              <Text>Dátum: {formatDate(workOrder.conditionAcceptedAt || new Date())}</Text>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Ügyfél és Eszköz Adatok</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ width: '48%' }}>
+                <View style={styles.cardRow}>
+                  <Text style={styles.label}>Név:</Text>
+                  <Text style={styles.value}>{workOrder.customerName || '-'}</Text>
+                </View>
+                <View style={styles.cardRow}>
+                  <Text style={styles.label}>Elérhetőség:</Text>
+                  <Text style={styles.value}>{workOrder.customerContact || '-'}</Text>
+                </View>
+                {workOrder.accessories && (
+                  <View style={styles.cardRow}>
+                    <Text style={styles.label}>Tartozékok:</Text>
+                    <Text style={styles.value}>{workOrder.accessories}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ width: '48%' }}>
+                <View style={styles.cardRow}>
+                  <Text style={styles.label}>Eszköz:</Text>
+                  <Text style={styles.value}>{workOrder.deviceType || '-'}</Text>
+                </View>
+                <View style={styles.cardRow}>
+                  <Text style={styles.label}>Sorozatszám:</Text>
+                  <Text style={styles.value}>{workOrder.serialNumber || '-'}</Text>
+                </View>
+                <View style={styles.cardRow}>
+                  <Text style={styles.label}>Állapot:</Text>
+                  <Text style={styles.value}>{workOrder.condition || '-'}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 15, marginBottom: 20 }}>
+            <Text style={styles.sectionTitle}>NYILATKOZAT SZÖVEGE</Text>
+            <Text style={styles.declarationText}>
+              {cleanDeclarationText(workOrder.conditionAcceptanceText || settings.conditionAcceptanceTemplate)}
+            </Text>
+          </View>
+
+          {/* Accepted Condition Videos */}
+          {workOrder.conditionVideos && workOrder.conditionVideos.length > 0 && (
+            <View style={{ marginBottom: 15 }}>
+              <Text style={styles.sectionTitle}>ELFOGADOTT ÁLLAPOTVIDEÓK</Text>
+              <View style={styles.photosContainer}>
+                {workOrder.conditionVideos.map((video: any) => (
+                  <View key={video.id} style={[styles.photoCard, { width: '48%' }]} wrap={false}>
+                    {video.thumbnailBase64 ? (
+                      <Image src={video.thumbnailBase64} style={styles.photoImg} />
+                    ) : null}
+                    <Text style={styles.photoMeta}>
+                      Dátum: {formatDate(video.createdAt)} | Időtartam: {video.durationSeconds || '?'} mp
+                    </Text>
+                    <Text style={{ fontSize: 8, color: '#475569', marginTop: 2 }}>
+                      Fájlméret: {((video.sizeBytes || 0) / (1024 * 1024)).toFixed(2)} MB
+                    </Text>
+                    <Text style={{ fontSize: 7, color: '#64748b', marginTop: 2 }}>
+                      SHA-256: {video.sha256 || 'N/A'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Accepted Photos */}
+          {workOrder.photos && workOrder.photos.length > 0 && (
+            <View style={{ marginBottom: 15 }}>
+              <Text style={styles.sectionTitle}>ELFOGADOTT FOTÓDOKUMENTÁCIÓ</Text>
+              <View style={styles.photosContainer}>
+                {workOrder.photos.map((p: any) => (
+                  <View key={p.id} style={styles.photoCard} wrap={false}>
+                    {p.base64Src ? (
+                      <Image src={p.base64Src} style={styles.photoImg} />
+                    ) : null}
+                    <Text style={styles.photoMeta}>{formatDate(p.createdAt)}</Text>
+                    <Text style={styles.photoDesc}>{p.description || 'Nincs leírás'}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Signatures */}
+          <View style={[styles.signaturesContainer, { marginTop: 25 }]} wrap={false}>
+            <View style={styles.signatureBox}>
+              <View style={styles.signatureLine}>
+                {workOrder.conditionAcceptanceSignature ? (
+                  <Image src={workOrder.conditionAcceptanceSignature} style={styles.signatureImg} />
+                ) : (
+                  <Text style={{ color: '#cbd5e1', fontSize: 10 }}>Nincs aláírás</Text>
+                )}
+              </View>
+              <Text style={{ fontWeight: 'bold' }}>Ügyfél aláírása</Text>
+              <Text style={styles.photoMeta}>Digitálisan rögzítve: {formatDate(workOrder.conditionAcceptedAt || new Date())}</Text>
+            </View>
+
+            <View style={styles.signatureBox}>
+              <View style={styles.signatureLine}>
+                {settings.representativeSignature ? (
+                  <Image src={settings.representativeSignature} style={styles.signatureImg} />
+                ) : (
+                  <Text style={{ fontWeight: 'bold', color: '#1e40af' }}>{settings.workshopName}</Text>
+                )}
+              </View>
+              <Text style={{ fontWeight: 'bold' }}>{settings.workshopName} képviseletében</Text>
+            </View>
+          </View>
+
+          <View style={[styles.footer, { marginTop: 30 }]}>
+            <Text style={[styles.footerText, { textAlign: 'center', lineHeight: 1.4 }]}>
+              Ez a dokumentum a(z) {settings.workshopName} szervizkezelő rendszerével készült.
+              Az átvételi állapot elfogadása és a digitális aláírás a felek által hitelesített dokumentumnak minősül.
+            </Text>
           </View>
         </Page>
       )}
@@ -523,6 +662,152 @@ export const DeclarationDocument = ({ workOrder, settings }: WorkOrderDocProps) 
           <Text style={[styles.footerText, { textAlign: 'center', lineHeight: 1.4 }]}>
             Ez a dokumentum a(z) {settings.workshopName} szervizkezelő rendszerével készült.
             A digitális aláírás a felek által elfogadott, jogilag kötőerejű nyilatkozatnak minősül.
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+export const ConditionAcceptanceDocument = ({ workOrder, settings }: WorkOrderDocProps) => {
+  const logoUrl = settings.logoPath;
+  const formatDate = (date: Date | string) => new Date(date).toLocaleString('hu-HU');
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            {logoUrl ? (
+              <Image src={logoUrl} style={styles.logo} />
+            ) : null}
+            <View>
+              <Text style={styles.headerTitle}>ÁTVÉTELI ÁLLAPOT NYILATKOZAT</Text>
+              <Text style={styles.headerSub}>{settings.workshopName}</Text>
+            </View>
+          </View>
+          <View style={styles.headerMeta}>
+            <Text>Munkalap: {workOrder.id.slice(-6).toUpperCase()}</Text>
+            <Text>Dátum: {formatDate(workOrder.conditionAcceptedAt || new Date())}</Text>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Ügyfél és Eszköz Adatok</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ width: '48%' }}>
+              <View style={styles.cardRow}>
+                <Text style={styles.label}>Név:</Text>
+                <Text style={styles.value}>{workOrder.customerName || '-'}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.label}>Elérhetőség:</Text>
+                <Text style={styles.value}>{workOrder.customerContact || '-'}</Text>
+              </View>
+              {workOrder.accessories && (
+                <View style={styles.cardRow}>
+                  <Text style={styles.label}>Tartozékok:</Text>
+                  <Text style={styles.value}>{workOrder.accessories}</Text>
+                </View>
+              )}
+            </View>
+            <View style={{ width: '48%' }}>
+              <View style={styles.cardRow}>
+                <Text style={styles.label}>Eszköz:</Text>
+                <Text style={styles.value}>{workOrder.deviceType || '-'}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.label}>Sorozatszám:</Text>
+                <Text style={styles.value}>{workOrder.serialNumber || '-'}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.label}>Állapot:</Text>
+                <Text style={styles.value}>{workOrder.condition || '-'}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ marginTop: 15, marginBottom: 20 }}>
+          <Text style={styles.sectionTitle}>NYILATKOZAT SZÖVEGE</Text>
+          <Text style={styles.declarationText}>
+            {cleanDeclarationText(workOrder.conditionAcceptanceText || settings.conditionAcceptanceTemplate)}
+          </Text>
+        </View>
+
+        {/* Accepted Condition Videos */}
+        {workOrder.conditionVideos && workOrder.conditionVideos.length > 0 && (
+          <View style={{ marginBottom: 15 }}>
+            <Text style={styles.sectionTitle}>ELFOGADOTT ÁLLAPOTVIDEÓK</Text>
+            <View style={styles.photosContainer}>
+              {workOrder.conditionVideos.map((video: any) => (
+                <View key={video.id} style={[styles.photoCard, { width: '48%' }]} wrap={false}>
+                  {video.thumbnailBase64 ? (
+                    <Image src={video.thumbnailBase64} style={styles.photoImg} />
+                  ) : null}
+                  <Text style={styles.photoMeta}>
+                    Dátum: {formatDate(video.createdAt)} | Időtartam: {video.durationSeconds || '?'} mp
+                  </Text>
+                  <Text style={{ fontSize: 8, color: '#475569', marginTop: 2 }}>
+                    Fájlméret: {((video.sizeBytes || 0) / (1024 * 1024)).toFixed(2)} MB
+                  </Text>
+                  <Text style={{ fontSize: 7, color: '#64748b', marginTop: 2 }}>
+                    SHA-256: {video.sha256 || 'N/A'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Accepted Photos */}
+        {workOrder.photos && workOrder.photos.length > 0 && (
+          <View style={{ marginBottom: 15 }}>
+            <Text style={styles.sectionTitle}>ELFOGADOTT FOTÓDOKUMENTÁCIÓ</Text>
+            <View style={styles.photosContainer}>
+              {workOrder.photos.map((p: any) => (
+                <View key={p.id} style={styles.photoCard} wrap={false}>
+                  {p.base64Src ? (
+                    <Image src={p.base64Src} style={styles.photoImg} />
+                  ) : null}
+                  <Text style={styles.photoMeta}>{formatDate(p.createdAt)}</Text>
+                  <Text style={styles.photoDesc}>{p.description || 'Nincs leírás'}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Signatures */}
+        <View style={[styles.signaturesContainer, { marginTop: 25 }]} wrap={false}>
+          <View style={styles.signatureBox}>
+            <View style={styles.signatureLine}>
+              {workOrder.conditionAcceptanceSignature ? (
+                <Image src={workOrder.conditionAcceptanceSignature} style={styles.signatureImg} />
+              ) : (
+                <Text style={{ color: '#cbd5e1', fontSize: 10 }}>Nincs aláírás</Text>
+              )}
+            </View>
+            <Text style={{ fontWeight: 'bold' }}>Ügyfél aláírása</Text>
+            <Text style={styles.photoMeta}>Digitálisan rögzítve: {formatDate(workOrder.conditionAcceptedAt || new Date())}</Text>
+          </View>
+
+          <View style={styles.signatureBox}>
+            <View style={styles.signatureLine}>
+              {settings.representativeSignature ? (
+                <Image src={settings.representativeSignature} style={styles.signatureImg} />
+              ) : (
+                <Text style={{ fontWeight: 'bold', color: '#1e40af' }}>{settings.workshopName}</Text>
+              )}
+            </View>
+            <Text style={{ fontWeight: 'bold' }}>{settings.workshopName} képviseletében</Text>
+          </View>
+        </View>
+
+        <View style={[styles.footer, { marginTop: 30 }]}>
+          <Text style={[styles.footerText, { textAlign: 'center', lineHeight: 1.4 }]}>
+            Ez a dokumentum a(z) {settings.workshopName} szervizkezelő rendszerével készült.
+            Az átvételi állapot elfogadása és a digitális aláírás a felek által hitelesített dokumentumnak minősül.
           </Text>
         </View>
       </Page>

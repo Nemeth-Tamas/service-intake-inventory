@@ -1,86 +1,56 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { PenTool, Check, ExternalLink, RefreshCw } from 'lucide-react'
-import { toggleSignatureQueue, voidSignature } from '@/lib/actions'
-import Link from 'next/link'
+import { useState } from 'react';
+import { PenTool, Check, RefreshCw } from 'lucide-react';
+import { voidSignature } from '@/lib/actions';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Props {
-  workOrderId: string
-  isWaiting: boolean
-  hasSignature: boolean
+  workOrderId: string;
+  isWaiting?: boolean;
+  hasSignature: boolean;
 }
 
-export default function SignatureTrigger({ workOrderId, isWaiting, hasSignature }: Props) {
-  const [loading, setLoading] = useState(false)
-
-  const handleToggle = async () => {
-    setLoading(true)
-    try {
-      await toggleSignatureQueue(workOrderId, !isWaiting)
-    } finally {
-      setLoading(false)
-    }
-  }
+export default function SignatureTrigger({ workOrderId, hasSignature }: Props) {
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleVoid = async () => {
-    if (!confirm('Biztosan érvényteleníteni akarod az aláírást? Új aláírásra lesz szükség.')) return
-    setLoading(true)
+    if (!confirm('Biztosan érvényteleníteni akarod az aláírást? Új aláírásra lesz szükség.')) return;
+    setLoading(true);
     try {
-      await voidSignature(workOrderId)
+      await voidSignature(workOrderId);
+      router.refresh();
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleToggle}
-          disabled={loading || hasSignature}
-          className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold transition-all shadow-lg ${
-            hasSignature 
-              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-default'
-              : isWaiting
-              ? 'bg-orange-500 text-white hover:bg-orange-600'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {hasSignature ? (
-            <><Check size={20} strokeWidth={3} /> Aláírva</>
-          ) : isWaiting ? (
-            <><PenTool size={20} /> Sorban áll...</>
-          ) : (
-            <><PenTool size={20} /> Aláírás kérése</>
-          )}
-        </button>
-
-        {hasSignature ? (
+      {hasSignature ? (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-default shadow-sm text-sm">
+            <Check size={18} strokeWidth={3} /> Aláírva
+          </div>
           <button
             onClick={handleVoid}
             disabled={loading}
-            className="p-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition border border-red-100 shadow-sm"
+            className="p-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition border border-red-100 shadow-sm cursor-pointer"
             title="Aláírás érvénytelenítése"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
-        ) : isWaiting && (
-          <Link
-            href={`/sign/${workOrderId}`}
-            className="p-4 bg-gray-800 text-white rounded-xl hover:bg-black transition shadow-lg"
-            title="Aláírás megnyitása"
-          >
-            <ExternalLink size={20} />
-          </Link>
-        )}
-      </div>
-      
-      {isWaiting && !hasSignature && (
-        <p className="text-center text-xs font-bold text-orange-600 animate-pulse bg-orange-50 py-2 rounded-lg border border-orange-100">
-          Várakozás az ügyfél aláírására az iPad-en...
-        </p>
+        </div>
+      ) : (
+        <Link
+          href={`/sign/${workOrderId}`}
+          className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-100 text-sm"
+        >
+          <PenTool size={18} /> Adatvédelmi Nyilatkozat Aláírása
+        </Link>
       )}
     </div>
-  )
+  );
 }

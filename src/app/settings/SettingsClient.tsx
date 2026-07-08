@@ -12,6 +12,7 @@ export default function SettingsClient({ settings, storage, smsGateways = [] }: 
   const [isPending, startTransition] = useTransition();
   const [cleanupResult, setCleanupCount] = useState<number | null>(null);
   const [declarationTemplate, setDeclarationTemplate] = useState(settings.declarationTemplate);
+  const [conditionAcceptanceTemplate, setConditionAcceptanceTemplate] = useState(settings.conditionAcceptanceTemplate ?? '');
   const sigPad = useRef<SignaturePad>(null);
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -73,6 +74,9 @@ export default function SettingsClient({ settings, storage, smsGateways = [] }: 
             const smsApiUrl = fd.get('smsApiUrl') as string;
             const smsApiKey = fd.get('smsApiKey') as string;
             const smsSender = fd.get('smsSender') as string;
+            const conditionVideoRetentionDays = fd.get('conditionVideoRetentionDays') as string;
+            const preserveAcceptedConditionVideos = fd.get('preserveAcceptedConditionVideos') === 'true';
+            
             // The template is now handled by the React state, not the native FormData
             startTransition(async () => {
               try {
@@ -95,7 +99,10 @@ export default function SettingsClient({ settings, storage, smsGateways = [] }: 
                   smtpFrom,
                   smsApiUrl,
                   smsApiKey,
-                  smsSender
+                  smsSender,
+                  conditionAcceptanceTemplate,
+                  conditionVideoRetentionDays,
+                  preserveAcceptedConditionVideos
                 );
                 alert('Beállítások sikeresen elmentve!');
               } catch (err: any) {
@@ -342,9 +349,49 @@ export default function SettingsClient({ settings, storage, smsGateways = [] }: 
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Aláírási Nyilatkozat Szövege</h3>
-              <p className="text-xs text-gray-500 italic">Ez a szöveg jelenik meg az iPad-en aláírás előtt, és ez kerül a PDF mellékletre is.</p>
+            <div className="space-y-4 pt-6 border-t border-gray-100">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Átvételi Állapot Videó Beállítások</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Videó megőrzési idő (napok)</label>
+                  <input
+                    name="conditionVideoRetentionDays"
+                    type="number"
+                    min="0"
+                    defaultValue={settings.conditionVideoRetentionDays ?? 180}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 text-sm font-medium"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    A rögzített állapotvideók ennyi nap után automatikusan törlésre kerülnek.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Aláírt videók megőrzése</label>
+                  <select
+                    name="preserveAcceptedConditionVideos"
+                    defaultValue={String(settings.preserveAcceptedConditionVideos ?? true)}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 text-sm font-medium"
+                  >
+                    <option value="true">Igen (Soha ne törölje az aláírt videókat)</option>
+                    <option value="false">Nem (Törölje a megőrzési idő lejárta után)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ha be van kapcsolva, a rendszer soha nem törli az aláírt állapotnyilatkozathoz tartozó videókat.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                <label className="block text-sm font-semibold text-gray-700">Állapot Elfogadási Nyilatkozat Szövege</label>
+                <p className="text-xs text-gray-500 italic">Ez a szöveg jelenik meg a készülék állapotának elfogadásakor és aláírásakor.</p>
+                <RichTextEditor value={conditionAcceptanceTemplate} onChange={setConditionAcceptanceTemplate} />
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-6 border-t border-gray-100">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Adatvédelmi Aláírási Nyilatkozat Szövege</h3>
+              <p className="text-xs text-gray-500 italic">Ez a szöveg jelenik meg az általános adatvédelmi nyilatkozat aláírásakor.</p>
               <RichTextEditor value={declarationTemplate} onChange={setDeclarationTemplate} />
             </div>
 

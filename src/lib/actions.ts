@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from './prisma';
+import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import { writeFile, mkdir, unlink, stat, readdir, readFile } from 'fs/promises';
 import { join } from 'path';
@@ -111,7 +112,10 @@ export async function updateSettings(
   smtpFrom?: string,
   smsApiUrl?: string,
   smsApiKey?: string,
-  smsSender?: string
+  smsSender?: string,
+  conditionAcceptanceTemplate?: string,
+  conditionVideoRetentionDays?: string | number,
+  preserveAcceptedConditionVideos?: boolean | string
 ) {
   const parsed = SettingsSchema.parse({
     baseUrl,
@@ -133,10 +137,20 @@ export async function updateSettings(
     smsApiUrl,
     smsApiKey,
     smsSender,
+    conditionAcceptanceTemplate,
+    conditionVideoRetentionDays,
+    preserveAcceptedConditionVideos,
   });
 
   if (parsed.declarationTemplate) {
     parsed.declarationTemplate = DOMPurify.sanitize(parsed.declarationTemplate, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3'],
+      ALLOWED_ATTR: [],
+    });
+  }
+
+  if (parsed.conditionAcceptanceTemplate) {
+    parsed.conditionAcceptanceTemplate = DOMPurify.sanitize(parsed.conditionAcceptanceTemplate, {
       ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3'],
       ALLOWED_ATTR: [],
     });
@@ -268,6 +282,7 @@ export async function runCleanup() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+  // 1. Clean up old photos of released orders
   const oldOrders = await prisma.workOrder.findMany({
     where: {
       status: 'Kiadva',
@@ -288,10 +303,75 @@ export async function runCleanup() {
     purgedCount++;
   }
 
+  // 2. Clean up old condition videos according to settings
+  let purgedVideosCount = 0;
+  try {
+    const settings = await getSettings();
+    const videoCutoff = new Date();
+    videoCutoff.setDate(videoCutoff.getDate() - (settings.conditionVideoRetentionDays ?? 180));
+
+    const oldVideos = await prisma.conditionVideo.findMany({
+      where: {
+        createdAt: { lte: videoCutoff }
+      }
+    });
+
+    let videosToDelete = [...oldVideos];
+
+    if (settings.preserveAcceptedConditionVideos && oldVideos.length > 0) {
+      const signedOrders = await prisma.workOrder.findMany({
+        where: {
+          conditionAcceptedAt: { not: null },
+          conditionAcceptanceMediaSnapshot: { not: null }
+        },
+        select: {
+          conditionAcceptanceMediaSnapshot: true
+        }
+      });
+
+      const preservedVideoIds = new Set<string>();
+      for (const order of signedOrders) {
+        if (order.conditionAcceptanceMediaSnapshot) {
+          try {
+            const snapshot = JSON.parse(order.conditionAcceptanceMediaSnapshot);
+            if (snapshot.videos) {
+              for (const v of snapshot.videos) {
+                if (v.id) preservedVideoIds.add(v.id);
+              }
+            }
+          } catch (e) {
+            console.error('Failed to parse media snapshot in cleanup:', e);
+          }
+        }
+      }
+
+      videosToDelete = oldVideos.filter(video => !preservedVideoIds.has(video.id));
+    }
+
+    for (const video of videosToDelete) {
+      try {
+        await unlink(join(process.cwd(), 'public', video.filePath));
+      } catch (e) {}
+      if (video.thumbnailPath) {
+        try {
+          await unlink(join(process.cwd(), 'public', video.thumbnailPath));
+        } catch (e) {}
+      }
+      await prisma.conditionVideo.delete({ where: { id: video.id } });
+      purgedVideosCount++;
+    }
+
+    if (purgedVideosCount > 0) {
+      await recordSystemActivity('SYSTEM', `Tisztítás: Törölve ${purgedVideosCount} db lejárt állapotvideó a tárhelyről.`);
+    }
+  } catch (error) {
+    console.error('Failed during condition video cleanup:', error);
+  }
+
   await triggerUpdate();
   revalidatePath('/');
   revalidatePath('/settings');
-  return { success: true, purgedCount };
+  return { success: true, purgedCount, purgedVideosCount };
 }
 
 export async function archiveWorkOrderPdf(formData: FormData) {
@@ -509,6 +589,31 @@ export async function deletePhoto(photoId: string, workOrderId: string) {
   revalidatePath(`/t/${parsedWorkOrderId}`);
 }
 
+export async function deleteConditionVideo(videoId: string, workOrderId: string) {
+  const parsedVideoId = z.string().cuid().parse(videoId);
+  const parsedWorkOrderId = z.string().cuid().parse(workOrderId);
+
+  const session = await auth();
+  if (!session) throw new Error('Nem engedélyezett művelet.');
+
+  const video = await prisma.conditionVideo.findUnique({ where: { id: parsedVideoId } });
+  if (video) {
+    try {
+      await unlink(join(process.cwd(), 'public', video.filePath));
+    } catch (e) {}
+    if (video.thumbnailPath) {
+      try {
+        await unlink(join(process.cwd(), 'public', video.thumbnailPath));
+      } catch (e) {}
+    }
+    await prisma.conditionVideo.delete({ where: { id: parsedVideoId } });
+    await logActivity(parsedWorkOrderId, `Átvételi állapot videó törölve: ${video.originalFileName || 'Névtelen'}`);
+    await recordSystemActivity('SYSTEM', `Átvételi állapot videó törölve a(z) #${parsedWorkOrderId.slice(-6).toUpperCase()} munkalapról.`, parsedWorkOrderId);
+  }
+  await triggerUpdate(parsedWorkOrderId);
+  revalidatePath(`/t/${parsedWorkOrderId}`);
+}
+
 export async function updateWorkOrderDetails(formData: FormData) {
   const rawData = {
     id: formData.get('id'),
@@ -527,24 +632,56 @@ export async function updateWorkOrderDetails(formData: FormData) {
 
   const parsed = WorkOrderUpdateSchema.parse(rawData);
 
-  await prisma.workOrder.update({
+  const existing = await prisma.workOrder.findUnique({
     where: { id: parsed.id },
-    data: {
-      customerName: parsed.customerName,
-      customerContact: parsed.customerContact,
-      deviceType: parsed.deviceType,
-      serialNumber: parsed.serialNumber,
-      condition: parsed.condition,
-      complaint: parsed.complaint,
-      accessories: parsed.accessories,
-      estimatedPrice: parsed.estimatedPrice,
-      warranty: parsed.warranty,
-      warrantyExpiry: parsed.warrantyExpiry,
-      estimatedDone: parsed.estimatedDone,
-    },
+    select: { condition: true, complaint: true, signatureData: true, conditionAcceptedAt: true }
   });
 
-  await logActivity(parsed.id, 'Munkalap adatai módosítva.');
+  let shouldResetConditionSignature = false;
+  if (existing) {
+    const isConditionChanged = (existing.condition || '') !== (parsed.condition || '');
+    const isComplaintChanged = (existing.complaint || '') !== (parsed.complaint || '');
+    
+    if (isConditionChanged || isComplaintChanged) {
+      if (existing.conditionAcceptedAt) {
+        shouldResetConditionSignature = true;
+      }
+    }
+  }
+
+  const updateData: any = {
+    customerName: parsed.customerName,
+    customerContact: parsed.customerContact,
+    deviceType: parsed.deviceType,
+    serialNumber: parsed.serialNumber,
+    condition: parsed.condition,
+    complaint: parsed.complaint,
+    accessories: parsed.accessories,
+    estimatedPrice: parsed.estimatedPrice,
+    warranty: parsed.warranty,
+    warrantyExpiry: parsed.warrantyExpiry,
+    estimatedDone: parsed.estimatedDone,
+  };
+
+  if (shouldResetConditionSignature) {
+    updateData.conditionAcceptedAt = null;
+    updateData.conditionAcceptanceSignature = null;
+    updateData.conditionAcceptanceText = null;
+    updateData.conditionAcceptanceMediaSnapshot = null;
+  }
+
+  await prisma.workOrder.update({
+    where: { id: parsed.id },
+    data: updateData,
+  });
+
+  if (shouldResetConditionSignature) {
+    await logActivity(parsed.id, 'Átvételi állapot aláírás érvénytelenítve állapot vagy hiba leírásának módosítása miatt.');
+    await recordSystemActivity('SYSTEM', `Átvételi állapot aláírás érvénytelenítve a(z) #${parsed.id.slice(-6).toUpperCase()} munkalapon módosítás miatt.`, parsed.id);
+  } else {
+    await logActivity(parsed.id, 'Munkalap adatai módosítva.');
+  }
+
   await triggerUpdate(parsed.id);
   revalidatePath(`/t/${parsed.id}`);
   revalidatePath('/');
@@ -601,6 +738,60 @@ export async function saveSignature(workOrderId: string, signatureData: string) 
   await triggerUpdate(parsed.workOrderId);
   revalidatePath(`/t/${parsed.workOrderId}`);
   revalidatePath('/sign');
+  revalidatePath('/');
+}
+
+export async function saveConditionAcceptance(workOrderId: string, signatureData: string) {
+  const { ConditionAcceptanceSchema } = await import('./validation');
+  const parsed = ConditionAcceptanceSchema.parse({ workOrderId, signatureData });
+  const settings = await getSettings();
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: parsed.workOrderId },
+    include: {
+      photos: true,
+      conditionVideos: true,
+    }
+  });
+  if (!workOrder) throw new Error('Munkalap nem található');
+
+  const mediaSnapshot = {
+    videos: workOrder.conditionVideos.map(v => ({
+      id: v.id,
+      filePath: v.filePath,
+      thumbnailPath: v.thumbnailPath,
+      sha256: v.sha256,
+      thumbnailSha256: v.thumbnailSha256,
+      durationSeconds: v.durationSeconds,
+      sizeBytes: v.sizeBytes,
+      width: v.width,
+      height: v.height,
+      createdAt: v.createdAt,
+    })),
+    photos: workOrder.photos.map(p => ({
+      id: p.id,
+      filePath: p.filePath,
+      description: p.description,
+      createdAt: p.createdAt,
+    }))
+  };
+
+  const acceptanceText = settings.conditionAcceptanceTemplate;
+
+  await prisma.workOrder.update({
+    where: { id: parsed.workOrderId },
+    data: {
+      conditionAcceptanceSignature: parsed.signatureData,
+      conditionAcceptedAt: new Date(),
+      conditionAcceptanceText: acceptanceText,
+      conditionAcceptanceMediaSnapshot: JSON.stringify(mediaSnapshot),
+    }
+  });
+
+  await logActivity(parsed.workOrderId, 'Átvételi állapot ügyfél által elfogadva.');
+  await recordSystemActivity('SUCCESS', `Átvételi állapot elfogadva: ${parsed.workOrderId}`, parsed.workOrderId);
+  await triggerUpdate(parsed.workOrderId);
+  revalidatePath(`/t/${parsed.workOrderId}`);
   revalidatePath('/');
 }
 
