@@ -3,16 +3,24 @@
 import { deleteWorkOrder } from '@/lib/actions';
 import { Trash2, RefreshCw } from 'lucide-react';
 import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function DeleteWorkOrder({ workOrderId }: { workOrderId: string }) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const onDelete = async () => {
     if (!confirm('BIZTOSAN TÖRÖLNI AKAROD ezt a munkalapot? Minden adat, fotó és PDF véglegesen elvész!')) return;
 
     startTransition(async () => {
       try {
-        await deleteWorkOrder(workOrderId);
+        const res = await deleteWorkOrder(workOrderId);
+        if (res && res.success) {
+          router.push('/');
+          router.refresh();
+        } else {
+          alert('Hiba történt a törlés során.');
+        }
       } catch (error) {
         console.error('Delete error:', error);
         alert('Hiba történt a törlés során.');
@@ -32,3 +40,4 @@ export default function DeleteWorkOrder({ workOrderId }: { workOrderId: string }
     </button>
   );
 }
+

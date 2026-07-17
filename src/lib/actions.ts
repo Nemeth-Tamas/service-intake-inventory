@@ -821,7 +821,10 @@ export async function deleteWorkOrder(workOrderId: string) {
 
   const order = await prisma.workOrder.findUnique({
     where: { id: parsedWorkOrderId },
-    include: { photos: true }
+    include: { 
+      photos: true,
+      conditionVideos: true
+    }
   });
 
   if (!order) return { success: false };
@@ -830,6 +833,17 @@ export async function deleteWorkOrder(workOrderId: string) {
     try {
       await unlink(join(process.cwd(), 'public', photo.filePath));
     } catch (e) {}
+  }
+
+  for (const video of order.conditionVideos) {
+    try {
+      await unlink(join(process.cwd(), 'public', video.filePath));
+    } catch (e) {}
+    if (video.thumbnailPath) {
+      try {
+        await unlink(join(process.cwd(), 'public', video.thumbnailPath));
+      } catch (e) {}
+    }
   }
 
   if (order.archivedPdfPath) {
@@ -843,14 +857,15 @@ export async function deleteWorkOrder(workOrderId: string) {
     prisma.note.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
     prisma.lineItem.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
     prisma.photo.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
+    prisma.conditionVideo.deleteMany({ where: { workOrderId: parsedWorkOrderId } }),
     prisma.workOrder.delete({ where: { id: parsedWorkOrderId } }),
   ]);
 
   await triggerUpdate();
   revalidatePath('/');
-  const redirect = (await import('next/navigation')).redirect;
-  redirect('/');
+  return { success: true };
 }
+
 
 export async function triggerManualBackup() {
   const { runBackupJob } = await import('./backup');
