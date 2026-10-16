@@ -19,7 +19,7 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: any
     const dateStr = new Date().toLocaleString('hu-HU');
     const orderId = workOrder.id.slice(-6).toUpperCase();
     const logoHtml = settings.logoPath 
-      ? `<img src="/api/media${settings.logoPath}" style="max-height: 35mm; max-width: 65mm; filter: grayscale(100%); margin-bottom: 5mm;" />` 
+      ? `<img src="/api/media${settings.logoPath}" style="max-height: 53mm; max-width: 70mm; filter: grayscale(100%) contrast(125%); object-fit: contain; margin-bottom: 6mm;" />` 
       : '';
 
     const title = mode === 'ticket' ? 'ÁTVÉTELI JEGY' : 'GARANCIAJEGY';
@@ -134,28 +134,28 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: any
                 color: #000 !important;
               }
             }
-            .receipt { width: 72mm; margin: 0 auto; padding: 5mm 0; }
-            .header { text-align: center; margin-bottom: 5mm; }
-            .workshop-name { font-size: 16pt; font-weight: 800; text-transform: uppercase; margin-bottom: 2mm; color: #000; }
-            .contact-info { font-size: 10pt; line-height: 1.25; font-weight: 600; color: #000; }
-            .divider { border-top: 2px dashed #000; margin: 4mm 0; padding-top: 4mm; }
-            .title-section { text-align: center; margin-bottom: 5mm; }
-            .title { font-size: 15pt; font-weight: 800; margin-bottom: 1mm; color: #000; }
-            .order-id { font-size: 13pt; font-weight: 800; color: #000; }
-            .section { font-size: 10.5pt; margin-bottom: 3mm; line-height: 1.35; font-weight: 600; color: #000; }
-            .row { margin-bottom: 1.2mm; color: #000; }
+            .receipt { width: 72mm; margin: 0 auto; padding: 6mm 0; }
+            .header { text-align: center; margin-bottom: 6mm; }
+            .workshop-name { font-size: 18pt; font-weight: 800; text-transform: uppercase; margin-bottom: 2mm; color: #000; }
+            .contact-info { font-size: 11pt; line-height: 1.3; font-weight: 600; color: #000; }
+            .divider { border-top: 2.5px dashed #000; margin: 5mm 0; padding-top: 5mm; }
+            .title-section { text-align: center; margin-bottom: 6mm; }
+            .title { font-size: 17pt; font-weight: 800; margin-bottom: 2mm; color: #000; }
+            .order-id { font-size: 15pt; font-weight: 800; color: #000; }
+            .section { font-size: 12pt; margin-bottom: 4mm; line-height: 1.4; font-weight: 600; color: #000; }
+            .row { margin-bottom: 1.5mm; color: #000; }
             .flex { display: flex; justify-content: space-between; }
             .bold { font-weight: 800; color: #000; }
-            .qr-container { text-align: center; margin: 6mm 0; }
-            .qr-box { display: inline-block; border: 2px solid #000; padding: 2mm; background: #fff; }
-            .qr-box svg { width: 40mm !important; height: 40mm !important; }
-            .footer { text-align: center; font-size: 11pt; font-weight: 700; margin-top: 5mm; color: #000; }
+            .qr-container { text-align: center; margin: 7mm 0; }
+            .qr-box { display: inline-block; border: 2.5px solid #000; padding: 2.5mm; background: #fff; }
+            .qr-box svg { width: 45mm !important; height: 45mm !important; }
+            .footer { text-align: center; font-size: 12pt; font-weight: 700; margin-top: 6mm; color: #000; }
             .warranty-box { 
-              margin-top: 4mm; 
-              border: 2.5px solid #000; 
-              padding: 3mm; 
+              margin-top: 5mm; 
+              border: 3px solid #000; 
+              padding: 4mm; 
               text-align: center;
-              font-size: 11.5pt;
+              font-size: 13pt;
               font-weight: 700;
               color: #000;
             }
