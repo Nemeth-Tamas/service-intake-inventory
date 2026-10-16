@@ -28,18 +28,44 @@ export default function StickerPrinter({ workOrder, baseUrl, logoPath, workshopN
           <title>Címke: ${workOrder.id.slice(-6).toUpperCase()}</title>
           <style>
             @page { margin: 0; size: 60mm 40mm; }
-            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            html, body { margin: 0; padding: 0; width: 60mm; height: 40mm; background: white; overflow: hidden; }
-            .sticker-container { width: 60mm; height: 40mm; padding: 3mm; display: flex; align-items: center; font-family: 'Arial', sans-serif; }
+            * { 
+              box-sizing: border-box; 
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important; 
+            }
+            html, body { 
+              margin: 0; 
+              padding: 0; 
+              width: 60mm; 
+              height: 40mm; 
+              background: white; 
+              overflow: hidden; 
+              font-family: Arial, sans-serif; 
+              font-weight: 600; 
+              color: #000; 
+            }
+            @media print {
+              body {
+                color: #000 !important;
+                font-family: Arial, sans-serif !important;
+                font-weight: 600 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              * {
+                color: #000 !important;
+              }
+            }
+            .sticker-container { width: 60mm; height: 40mm; padding: 3mm; display: flex; align-items: center; font-family: Arial, sans-serif; }
             .qr-side { width: 28mm; height: 28mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
             .qr-side svg { width: 100% !important; height: 100% !important; }
             .logo-overlay { position: absolute; width: 7mm; height: 7mm; background: white; padding: 0.3mm; border-radius: 1mm; z-index: 10; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 0.3mm solid #fff; }
-            .info-side { flex: 1; height: 34mm; display: flex; flex-direction: column; padding-left: 2mm; overflow: hidden; justify-content: space-between; border-left: 1px solid #eee; }
-            .workshop-tag { font-size: 6pt; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 0.5mm; }
+            .info-side { flex: 1; height: 34mm; display: flex; flex-direction: column; padding-left: 2mm; overflow: hidden; justify-content: space-between; border-left: 1.5px solid #000; }
+            .workshop-tag { font-size: 6.5pt; color: #000; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5mm; }
             .id-header { border-bottom: 1.5pt solid #000; padding-bottom: 0.5mm; margin-bottom: 1mm; }
-            .id-text { font-size: 13pt; font-weight: 900; font-family: monospace; letter-spacing: -0.2mm; }
+            .id-text { font-size: 13pt; font-weight: 900; font-family: monospace, Arial; letter-spacing: -0.2mm; color: #000; }
             .details { flex-grow: 1; display: flex; flex-direction: column; gap: 0.3mm; justify-content: center; }
-            .text { font-size: 7pt; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; font-weight: bold; max-width: 25mm; }
+            .text { font-size: 7.5pt; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; font-weight: 700; max-width: 25mm; }
             .priority-box { font-size: 8pt; font-weight: 900; text-transform: uppercase; border: 1.5px solid #000; padding: 0.5mm 2mm; align-self: flex-start; background: #000 !important; color: #fff !important; }
           </style>
         </head>

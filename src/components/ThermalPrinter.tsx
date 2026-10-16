@@ -107,37 +107,57 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: any
           <title>${title} - ${orderId}</title>
           <style>
             @page { margin: 0; size: 80mm auto; }
-            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            * { 
+              box-sizing: border-box; 
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important; 
+            }
             body { 
               margin: 0; 
               padding: 0; 
               width: 80mm; 
               background: white; 
-              font-family: 'Courier New', Courier, monospace;
-              color: black;
+              font-family: Arial, sans-serif;
+              font-weight: 600;
+              color: #000;
+              text-rendering: geometricPrecision;
+            }
+            @media print {
+              body {
+                color: #000 !important;
+                font-family: Arial, sans-serif !important;
+                font-weight: 600 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              * {
+                color: #000 !important;
+              }
             }
             .receipt { width: 72mm; margin: 0 auto; padding: 5mm 0; }
             .header { text-align: center; margin-bottom: 5mm; }
-            .workshop-name { font-size: 17pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2mm; }
-            .contact-info { font-size: 10pt; line-height: 1.2; }
-            .divider { border-top: 3px dashed black; margin: 4mm 0; padding-top: 4mm; }
+            .workshop-name { font-size: 16pt; font-weight: 800; text-transform: uppercase; margin-bottom: 2mm; color: #000; }
+            .contact-info { font-size: 10pt; line-height: 1.25; font-weight: 600; color: #000; }
+            .divider { border-top: 2px dashed #000; margin: 4mm 0; padding-top: 4mm; }
             .title-section { text-align: center; margin-bottom: 5mm; }
-            .title { font-size: 15pt; font-weight: bold; margin-bottom: 1mm; }
-            .order-id { font-size: 12pt; font-weight: bold; }
-            .section { font-size: 11pt; margin-bottom: 3mm; line-height: 1.3; }
-            .row { margin-bottom: 1mm; }
+            .title { font-size: 15pt; font-weight: 800; margin-bottom: 1mm; color: #000; }
+            .order-id { font-size: 13pt; font-weight: 800; color: #000; }
+            .section { font-size: 10.5pt; margin-bottom: 3mm; line-height: 1.35; font-weight: 600; color: #000; }
+            .row { margin-bottom: 1.2mm; color: #000; }
             .flex { display: flex; justify-content: space-between; }
-            .bold { font-weight: bold; }
-            .qr-container { text-align: center; margin: 8mm 0; }
-            .qr-box { display: inline-block; border: 1.5px solid black; padding: 2mm; }
+            .bold { font-weight: 800; color: #000; }
+            .qr-container { text-align: center; margin: 6mm 0; }
+            .qr-box { display: inline-block; border: 2px solid #000; padding: 2mm; background: #fff; }
             .qr-box svg { width: 40mm !important; height: 40mm !important; }
-            .footer { text-align: center; font-size: 11pt; font-style: italic; margin-top: 5mm; }
+            .footer { text-align: center; font-size: 11pt; font-weight: 700; margin-top: 5mm; color: #000; }
             .warranty-box { 
               margin-top: 4mm; 
-              border: 3px solid black; 
+              border: 2.5px solid #000; 
               padding: 3mm; 
               text-align: center;
-              font-size: 12pt;
+              font-size: 11.5pt;
+              font-weight: 700;
+              color: #000;
             }
           </style>
         </head>
