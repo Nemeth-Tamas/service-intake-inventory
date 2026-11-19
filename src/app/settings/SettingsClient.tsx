@@ -224,8 +224,8 @@ export default function SettingsClient({ settings, storage, smsGateways = [] }: 
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 font-medium text-gray-700"
                     >
                       <option value="none">Nincs automatikus mentés</option>
-                      <option value="daily">Naponta (24 óránként)</option>
-                      <option value="weekly">Hetente (7 naponta)</option>
+                      <option value="daily">Naponta (24 óránként, utolsó 7 megőrzése)</option>
+                      <option value="weekly">Hetente (7 naponta, utolsó 7 megőrzése)</option>
                     </select>
                   </div>
                   <div>

@@ -2,7 +2,9 @@ node_modules
 .next
 .git
 prisma/data
-dev.db
+*.db
+*.db.*
+*.db-*
 *.log
 .env
 .env.local

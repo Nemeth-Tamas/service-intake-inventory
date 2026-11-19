@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, stat } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { stat } from 'fs/promises';
+import { createReadStream, existsSync } from 'fs';
+import { resolve, sep } from 'path';
+import { Readable } from 'stream';
+
+const PUBLIC_DIR = resolve(process.cwd(), 'public');
+const ALLOWED_ROOTS = [
+  resolve(PUBLIC_DIR, 'uploads'),
+  resolve(PUBLIC_DIR, 'archives'),
+];
 
 export async function GET(
   request: NextRequest,
@@ -9,13 +16,15 @@ export async function GET(
 ) {
   const { path } = await params;
   const filePath = path.join('/');
-  
-  // Security: only allow access to specific folders
-  if (!filePath.startsWith('uploads/') && !filePath.startsWith('archives/')) {
+  const fullPath = resolve(PUBLIC_DIR, filePath);
+
+  // Security: strictly ensure resolved path stays inside public/uploads or public/archives
+  const isAllowed = ALLOWED_ROOTS.some(
+    (root) => fullPath.startsWith(root + sep)
+  );
+  if (!isAllowed) {
     return new NextResponse('Forbidden', { status: 403 });
   }
-
-  const fullPath = join(process.cwd(), 'public', filePath);
 
   if (!existsSync(fullPath)) {
     return new NextResponse('Not Found', { status: 404 });
@@ -23,9 +32,13 @@ export async function GET(
 
   try {
     const fileStat = await stat(fullPath);
+    if (!fileStat.isFile()) {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
     const fileSize = fileStat.size;
     const extension = filePath.split('.').pop()?.toLowerCase();
-    
+
     let contentType = 'application/octet-stream';
     if (extension === 'jpg' || extension === 'jpeg') contentType = 'image/jpeg';
     else if (extension === 'png') contentType = 'image/png';
@@ -50,11 +63,18 @@ export async function GET(
     }
 
     if (range && (extension === 'mp4' || extension === 'webm')) {
-      const parts = range.replace(/bytes=/, "").split("-");
+      const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-      if (start >= fileSize || end >= fileSize) {
+      if (
+        isNaN(start) ||
+        isNaN(end) ||
+        start < 0 ||
+        end < start ||
+        start >= fileSize ||
+        end >= fileSize
+      ) {
         return new NextResponse('Requested Range Not Satisfiable', {
           status: 416,
           headers: {
@@ -63,22 +83,24 @@ export async function GET(
         });
       }
 
-      const chunksize = (end - start) + 1;
-      const fileBuffer = await readFile(fullPath);
-      const slicedBuffer = fileBuffer.subarray(start, end + 1);
+      const chunkSize = end - start + 1;
+      const nodeStream = createReadStream(fullPath, { start, end });
+      const webStream = Readable.toWeb(nodeStream) as ReadableStream;
 
       headers['Content-Range'] = `bytes ${start}-${end}/${fileSize}`;
-      headers['Content-Length'] = String(chunksize);
+      headers['Content-Length'] = String(chunkSize);
 
-      return new NextResponse(slicedBuffer, {
+      return new NextResponse(webStream, {
         status: 206,
         headers,
       });
     }
 
-    const fileBuffer = await readFile(fullPath);
+    const nodeStream = createReadStream(fullPath);
+    const webStream = Readable.toWeb(nodeStream) as ReadableStream;
     headers['Content-Length'] = String(fileSize);
-    return new NextResponse(fileBuffer, { headers });
+
+    return new NextResponse(webStream, { headers });
   } catch (error) {
     console.error('Media serving error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

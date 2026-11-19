@@ -45,16 +45,7 @@ export default async function Home({
   }
 
   // Trigger scheduled backup asynchronously if due
-  const settings = await prisma.settings.findUnique({ where: { id: 1 } });
-  if (settings && settings.backupInterval !== 'none') {
-    const now = new Date();
-    const last = settings.lastBackupTime ? new Date(settings.lastBackupTime) : new Date(0);
-    const diffHours = (now.getTime() - last.getTime()) / (1000 * 60 * 65); // small buffer for runtime variations
-    const limit = settings.backupInterval === 'daily' ? 24 : 168;
-    if (diffHours >= limit) {
-      import('@/lib/backup').then(m => m.runBackupJob()).catch(console.error);
-    }
-  }
+  import('@/lib/backup').then(m => m.checkAndRunScheduledBackup()).catch(console.error);
 
   const workOrders = currentTab !== 'logs' ? await prisma.workOrder.findMany({
     where,

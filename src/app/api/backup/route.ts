@@ -2,15 +2,23 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import AdmZip from 'adm-zip';
+import { auth } from '@/auth';
+import { createSafeDbSnapshot } from '@/lib/backup';
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
+  let snapshotPath: string | null = null;
   try {
     const zip = new AdmZip();
 
-    // Add DB
-    const dbPath = path.join(process.cwd(), 'prisma/data/dev.db');
-    if (fs.existsSync(dbPath)) {
-      zip.addLocalFile(dbPath, 'db');
+    // Add consistent SQLite DB snapshot
+    snapshotPath = await createSafeDbSnapshot();
+    if (snapshotPath && fs.existsSync(snapshotPath)) {
+      zip.addLocalFile(snapshotPath, 'db', 'dev.db');
     }
 
     // Add Uploads
@@ -37,5 +45,13 @@ export async function GET() {
   } catch (error) {
     console.error('Backup ZIP download error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
+  } finally {
+    if (snapshotPath && fs.existsSync(snapshotPath)) {
+      try {
+        fs.unlinkSync(snapshotPath);
+      } catch {
+        // ignore temp cleanup failure
+      }
+    }
   }
 }

@@ -2,6 +2,13 @@ import { prisma } from './prisma';
 import AdmZip from 'adm-zip';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+
+const MAX_ROTATING_BACKUPS = 7;
+
+const globalForBackup = globalThis as unknown as {
+  isBackupRunning?: boolean;
+};
 
 async function logBackupActivity(message: string, type: 'SUCCESS' | 'WARNING' | 'INFO') {
   try {
@@ -9,20 +16,84 @@ async function logBackupActivity(message: string, type: 'SUCCESS' | 'WARNING' | 
       data: {
         type,
         message,
-      }
+      },
     });
   } catch (err) {
     console.error('Failed to log backup activity:', err);
   }
 }
 
-export async function runBackupJob() {
-  const settings = await prisma.settings.findUnique({ where: { id: 1 } });
-  if (!settings) return;
+/**
+ * Creates a crash-consistent snapshot of the live SQLite database using VACUUM INTO.
+ * Falls back to a direct file copy only if VACUUM INTO is unavailable.
+ */
+export async function createSafeDbSnapshot(): Promise<string | null> {
+  const dbPath = path.join(process.cwd(), 'prisma/data/dev.db');
+  if (!fs.existsSync(dbPath)) {
+    return null;
+  }
 
-  const backupDir = path.join(process.cwd(), 'prisma/data/backups');
-  
+  const tempPath = path.join(
+    os.tmpdir(),
+    `serviceapp-db-snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.db`
+  );
+
   try {
+    const escapedPath = tempPath.replace(/'/g, "''");
+    await prisma.$executeRawUnsafe(`VACUUM INTO '${escapedPath}'`);
+    if (fs.existsSync(tempPath)) {
+      return tempPath;
+    }
+  } catch (err) {
+    console.warn('SQLite VACUUM INTO failed, falling back to file copy:', err);
+  }
+
+  fs.copyFileSync(dbPath, tempPath);
+  return tempPath;
+}
+
+function rotateBackupsInDir(dir: string, maxKeep: number = MAX_ROTATING_BACKUPS) {
+  try {
+    if (!fs.existsSync(dir)) return;
+    const files = fs.readdirSync(dir);
+    const backupFiles = files
+      .filter((f) => f.startsWith('backup-') && f.endsWith('.zip'))
+      .map((f) => {
+        const fullPath = path.join(dir, f);
+        const stat = fs.statSync(fullPath);
+        return {
+          name: f,
+          path: fullPath,
+          mtimeMs: stat.mtimeMs,
+        };
+      })
+      .sort((a, b) => b.mtimeMs - a.mtimeMs); // newest first
+
+    if (backupFiles.length > maxKeep) {
+      for (let i = maxKeep; i < backupFiles.length; i++) {
+        fs.unlinkSync(backupFiles[i].path);
+      }
+    }
+  } catch (cleanError) {
+    console.error(`Failed to rotate old backups in ${dir}:`, cleanError);
+  }
+}
+
+export async function runBackupJob() {
+  if (globalForBackup.isBackupRunning) {
+    console.log('Backup job already in progress, skipping duplicate trigger.');
+    return;
+  }
+
+  globalForBackup.isBackupRunning = true;
+  let snapshotPath: string | null = null;
+
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    if (!settings) return;
+
+    const backupDir = path.join(process.cwd(), 'prisma/data/backups');
+
     // 1. Create directory if not exists
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
@@ -31,10 +102,10 @@ export async function runBackupJob() {
     // 2. Initialize ZIP
     const zip = new AdmZip();
 
-    // 3. Add DB file
-    const dbPath = path.join(process.cwd(), 'prisma/data/dev.db');
-    if (fs.existsSync(dbPath)) {
-      zip.addLocalFile(dbPath, 'db');
+    // 3. Add consistent SQLite DB snapshot
+    snapshotPath = await createSafeDbSnapshot();
+    if (snapshotPath && fs.existsSync(snapshotPath)) {
+      zip.addLocalFile(snapshotPath, 'db', 'dev.db');
     }
 
     // 4. Add Uploads folder
@@ -53,43 +124,28 @@ export async function runBackupJob() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupFileName = `backup-${timestamp}.zip`;
     const backupFilePath = path.join(backupDir, backupFileName);
-    
+
     zip.writeZip(backupFilePath);
 
-    // 7. Optional NAS backup path
+    // 7. Optional NAS backup path + rotation
     if (settings.nasBackupPath && settings.nasBackupPath.trim() !== '') {
       try {
-        if (!fs.existsSync(settings.nasBackupPath)) {
-          fs.mkdirSync(settings.nasBackupPath, { recursive: true });
+        const nasDir = settings.nasBackupPath.trim();
+        if (!fs.existsSync(nasDir)) {
+          fs.mkdirSync(nasDir, { recursive: true });
         }
-        const nasFilePath = path.join(settings.nasBackupPath, backupFileName);
+        const nasFilePath = path.join(nasDir, backupFileName);
         fs.copyFileSync(backupFilePath, nasFilePath);
-      } catch (nasError: any) {
+        rotateBackupsInDir(nasDir, MAX_ROTATING_BACKUPS);
+      } catch (nasError: unknown) {
+        const message = nasError instanceof Error ? nasError.message : 'Ismeretlen hiba';
         console.error('Failed to copy backup to NAS path:', nasError);
-        await logBackupActivity(`Biztonsági mentés másolása a NAS-ra sikertelen: ${nasError.message}`, 'WARNING');
+        await logBackupActivity(`Biztonsági mentés másolása a NAS-ra sikertelen: ${message}`, 'WARNING');
       }
     }
 
-    // 8. Clean up old backups (keep last 5 local backups)
-    try {
-      const files = fs.readdirSync(backupDir);
-      const backupFiles = files
-        .filter(f => f.startsWith('backup-') && f.endsWith('.zip'))
-        .map(f => ({
-          name: f,
-          path: path.join(backupDir, f),
-          ctime: fs.statSync(path.join(backupDir, f)).ctimeMs
-        }))
-        .sort((a, b) => b.ctime - a.ctime); // newest first
-
-      if (backupFiles.length > 5) {
-        for (let i = 5; i < backupFiles.length; i++) {
-          fs.unlinkSync(backupFiles[i].path);
-        }
-      }
-    } catch (cleanError) {
-      console.error('Failed to clean up old backups:', cleanError);
-    }
+    // 8. Rotate old local backups (keep last 7)
+    rotateBackupsInDir(backupDir, MAX_ROTATING_BACKUPS);
 
     // 9. Update settings
     await prisma.settings.update({
@@ -98,20 +154,57 @@ export async function runBackupJob() {
         lastBackupTime: new Date(),
         backupStatus: 'success',
         backupError: null,
-      }
+      },
     });
 
-    await logBackupActivity('Automatikus biztonsági mentés sikeresen lefutott.', 'SUCCESS');
-  } catch (error: any) {
+    await logBackupActivity(
+      `Automatikus biztonsági mentés sikeresen lefutott (${backupFileName}, utolsó ${MAX_ROTATING_BACKUPS} mentés megőrizve).`,
+      'SUCCESS'
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Ismeretlen hiba';
     console.error('Backup job failed:', error);
-    await prisma.settings.update({
-      where: { id: 1 },
-      data: {
-        backupStatus: 'failed',
-        backupError: error.message || 'Ismeretlen hiba',
+    try {
+      await prisma.settings.update({
+        where: { id: 1 },
+        data: {
+          backupStatus: 'failed',
+          backupError: message,
+        },
+      });
+    } catch (updateErr) {
+      console.error('Failed to update backup error status:', updateErr);
+    }
+    await logBackupActivity(`Automatikus biztonsági mentés sikertelen: ${message}`, 'WARNING');
+  } finally {
+    if (snapshotPath && fs.existsSync(snapshotPath)) {
+      try {
+        fs.unlinkSync(snapshotPath);
+      } catch {
+        // ignore temp cleanup failure
       }
-    });
-    await logBackupActivity(`Automatikus biztonsági mentés sikertelen: ${error.message}`, 'WARNING');
+    }
+    globalForBackup.isBackupRunning = false;
+  }
+}
+
+export async function checkAndRunScheduledBackup() {
+  if (globalForBackup.isBackupRunning) return;
+
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    if (!settings || settings.backupInterval === 'none') return;
+
+    const now = Date.now();
+    const last = settings.lastBackupTime ? new Date(settings.lastBackupTime).getTime() : 0;
+    const diffHours = (now - last) / (1000 * 60 * 60);
+    const limitHours = settings.backupInterval === 'daily' ? 24 : 168;
+
+    if (diffHours >= limitHours) {
+      await runBackupJob();
+    }
+  } catch (err) {
+    console.error('Scheduled backup check failed:', err);
   }
 }
 
@@ -121,7 +214,7 @@ export async function restoreBackup(zipPath: string) {
 
     // 1. Verify zip contents
     const entries = zip.getEntries();
-    const hasDb = entries.some(e => e.entryName === 'db/dev.db');
+    const hasDb = entries.some((e) => e.entryName === 'db/dev.db');
     if (!hasDb) {
       throw new Error('Érvénytelen mentési fájl: A dev.db nem található a ZIP-ben.');
     }
@@ -131,7 +224,7 @@ export async function restoreBackup(zipPath: string) {
     const archivesDir = path.join(process.cwd(), 'public/archives');
 
     // Extract database
-    const dbEntry = entries.find(e => e.entryName === 'db/dev.db');
+    const dbEntry = entries.find((e) => e.entryName === 'db/dev.db');
     if (dbEntry) {
       if (fs.existsSync(dbPath)) {
         fs.copyFileSync(dbPath, `${dbPath}.before-restore`);
@@ -147,9 +240,10 @@ export async function restoreBackup(zipPath: string) {
 
     await logBackupActivity('Rendszer sikeresen visszaállítva egy korábbi mentésből.', 'SUCCESS');
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Ismeretlen hiba';
     console.error('Restore failed:', error);
-    await logBackupActivity(`Rendszer visszaállítás sikertelen: ${error.message}`, 'WARNING');
+    await logBackupActivity(`Rendszer visszaállítás sikertelen: ${message}`, 'WARNING');
     throw error;
   }
 }

@@ -56,7 +56,7 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
       .replace(/'/g, '&#39;');
   };
 
-  const printReceipt = () => {
+  const printReceipt = (targetMode: 'ticket' | 'warranty' | 'technician' = mode) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -69,9 +69,9 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
       ? `<img src="/api/media${settings.logoPath}" style="max-height: 53mm; max-width: 70mm; filter: grayscale(100%) contrast(125%); object-fit: contain; margin-bottom: 6mm;" />` 
       : '';
 
-    const title = mode === 'ticket'
+    const title = targetMode === 'ticket'
       ? 'ÁTVÉTELI JEGY'
-      : mode === 'warranty'
+      : targetMode === 'warranty'
         ? 'GARANCIAJEGY'
         : 'TECHNIKUS LAP';
     
@@ -102,7 +102,7 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
     const photoCount = workOrder.photos?.length || 0;
     const videoCount = workOrder.conditionVideos?.length || 0;
 
-    if (mode === 'technician') {
+    if (targetMode === 'technician') {
       const manualNotes = (workOrder.notes || []).filter(
         (n) => n.text && !n.text.startsWith('[RENDSZER]')
       );
@@ -358,10 +358,10 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
       </div>
     `;
 
-    const contentHtml = mode === 'ticket' ? `
+    const contentHtml = targetMode === 'ticket' ? `
       <div class="section">
         <div class="row"><b>Hiba:</b></div>
-        <div class="row" style="white-space: pre-wrap;">${workOrder.complaint || 'N/A'}</div>
+        <div class="row" style="white-space: pre-wrap;">${escapeHtml(workOrder.complaint || 'N/A')}</div>
       </div>
       ${workOrder.estimatedPrice ? `
         <div class="section divider">
@@ -384,7 +384,7 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
       </div>
     `;
 
-    const qrSection = mode === 'ticket' ? `
+    const qrSection = targetMode === 'ticket' ? `
       <div class="qr-container">
         <div class="qr-box">
           ${qrSvg}
@@ -464,12 +464,12 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
           <div class="receipt">
             <div class="header">
               ${logoHtml}
-              <div class="workshop-name">${settings.workshopName}</div>
+              <div class="workshop-name">${escapeHtml(settings.workshopName)}</div>
               <div class="contact-info">
-                ${settings.address ? `<div>${settings.address}</div>` : ''}
-                ${settings.phone ? `<div>Tel: ${settings.phone}</div>` : ''}
-                ${settings.email ? `<div>${settings.email}</div>` : ''}
-                ${settings.website ? `<div>${settings.website}</div>` : ''}
+                ${settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ''}
+                ${settings.phone ? `<div>Tel: ${escapeHtml(settings.phone)}</div>` : ''}
+                ${settings.email ? `<div>${escapeHtml(settings.email)}</div>` : ''}
+                ${settings.website ? `<div>${escapeHtml(settings.website)}</div>` : ''}
               </div>
             </div>
 
@@ -482,23 +482,23 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
 
             <div class="section">
               <div class="flex"><span>Dátum:</span> <span>${dateStr}</span></div>
-              <div class="flex"><span>Ügyfél:</span> <span class="bold">${workOrder.customerName || 'N/A'}</span></div>
-              ${workOrder.customerContact ? `<div class="flex"><span>Kapcsolat:</span> <span>${workOrder.customerContact}</span></div>` : ''}
+              <div class="flex"><span>Ügyfél:</span> <span class="bold">${escapeHtml(workOrder.customerName || 'N/A')}</span></div>
+              ${workOrder.customerContact ? `<div class="flex"><span>Kapcsolat:</span> <span>${escapeHtml(workOrder.customerContact)}</span></div>` : ''}
             </div>
 
             <div class="divider"></div>
 
             <div class="section">
-              <div class="flex"><span class="bold">Eszköz:</span> <span>${workOrder.deviceType || 'N/A'}</span></div>
-              ${workOrder.serialNumber ? `<div class="flex"><span>S/N:</span> <span>${workOrder.serialNumber}</span></div>` : ''}
-              ${mode === 'ticket' && workOrder.accessories ? `<div style="margin-top: 2mm; font-style: italic;"><b>Tartozékok:</b><br/>${workOrder.accessories}</div>` : ''}
-              ${mode === 'warranty' && workOrder.warranty ? `
+              <div class="flex"><span class="bold">Eszköz:</span> <span>${escapeHtml(workOrder.deviceType || 'N/A')}</span></div>
+              ${workOrder.serialNumber ? `<div class="flex"><span>S/N:</span> <span>${escapeHtml(workOrder.serialNumber)}</span></div>` : ''}
+              ${targetMode === 'ticket' && workOrder.accessories ? `<div style="margin-top: 2mm; font-style: italic;"><b>Tartozékok:</b><br/>${escapeHtml(workOrder.accessories)}</div>` : ''}
+              ${targetMode === 'warranty' && workOrder.warranty ? `
                 <div class="warranty-box">
                   <div class="bold">GARANCIA:</div>
-                  <div style="margin-top: 1mm;">${workOrder.warranty}</div>
+                  <div style="margin-top: 1mm;">${escapeHtml(workOrder.warranty)}</div>
                   ${workOrder.warrantyExpiry ? `
                     <div style="margin-top: 2mm; font-size: 10pt; border-top: 1px dashed black; padding-top: 1mm;">
-                      Lejárat: ${new Date(workOrder.warrantyExpiry).toLocaleDateString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.')}
+                      Lejárat: ${formatDateOnly(workOrder.warrantyExpiry)}
                     </div>
                   ` : ''}
                 </div>
@@ -556,6 +556,14 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
           />
         </div>
       )}
+
+      <button
+        onClick={() => printReceipt('technician')}
+        title="Technikus Lap azonnali nyomtatása (80mm)"
+        className="flex items-center gap-2 bg-amber-50 text-amber-800 px-4 py-2 rounded-xl hover:bg-amber-100 transition shadow-sm font-bold text-sm border border-amber-200"
+      >
+        <Wrench size={18} /> Technikus Lap
+      </button>
 
       <button
         onClick={() => { setMode('ticket'); setIsOpen(true); }}
@@ -632,7 +640,7 @@ export default function ThermalPrinter({ workOrder, settings }: { workOrder: The
                 Mégse
               </button>
               <button 
-                onClick={printReceipt}
+                onClick={() => printReceipt(mode)}
                 className="flex-[2] py-3 px-6 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center justify-center gap-2 transition"
               >
                 <Printer size={20} /> Nyomtatás Indítása
